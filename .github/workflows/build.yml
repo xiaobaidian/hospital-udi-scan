@@ -37,31 +37,25 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon > /tmp/build.log 2>&1
 
-      - name: Upload build log for diagnosis (to diag branch)
+      - name: Upload build log for diagnosis (commit comment)
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
         run: |
           python3 - <<'PY'
-          import os, base64, json, urllib.request, urllib.error
-          token=os.environ['GH_TOKEN']; repo=os.environ['REPO']
-          log=open('/tmp/build.log','rb').read()
-          if len(log)>80000: log=log[-80000:]
-          content=base64.b64encode(log).decode()
-          url=f"https://api.github.com/repos/{repo}/contents/build_error.log"
-          req=urllib.request.Request(url); req.add_header("Authorization",f"token {token}"); req.add_header("User-Agent","x")
-          sha=None
+          import os, json, urllib.request, urllib.error
+          token=os.environ['GH_TOKEN']; repo=os.environ['REPO']; sha=os.environ['SHA']
+          log=open('/tmp/build.log','rb').read().decode('utf-8','ignore')
+          if len(log)>30000: log=log[-30000:]
+          url=f"https://api.github.com/repos/{repo}/commits/{sha}/comments"
+          data={"body":"BUILD LOG (tail):\n\n```\n"+log+"\n```"}
+          req=urllib.request.Request(url,data=json.dumps(data).encode(),method="POST")
+          req.add_header("Authorization",f"token {token}"); req.add_header("User-Agent","x"); req.add_header("Content-Type","application/json")
           try:
-              with urllib.request.urlopen(req,timeout=30) as r: sha=json.loads(r.read()).get('sha')
-          except Exception: sha=None
-          data={"message":"build log","content":content,"branch":"diag"}
-          if sha: data["sha"]=sha
-          req2=urllib.request.Request(url,data=json.dumps(data).encode(),method="PUT")
-          req2.add_header("Authorization",f"token {token}"); req2.add_header("User-Agent","x"); req2.add_header("Content-Type","application/json")
-          try:
-              with urllib.request.urlopen(req2,timeout=30) as r: print("uploaded",r.status)
-          except urllib.error.HTTPError as e: print("upload err",e.code,e.read()[:200])
+              with urllib.request.urlopen(req,timeout=30) as r: print("commented",r.status)
+          except urllib.error.HTTPError as e: print("comment err",e.code,e.read()[:300])
           PY
 
       - name: Upload APK artifact (Actions)
