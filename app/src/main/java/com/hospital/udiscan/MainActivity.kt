@@ -3,6 +3,7 @@ package com.hospital.udiscan
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -39,15 +40,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnQuery: Button
     private lateinit var btnAdd: Button
     private lateinit var btnDiscard: Button
-    private lateinit var btnExportJson: Button
-    private lateinit var btnExportCsv: Button
-    private lateinit var btnClear: Button
-    private lateinit var btnDict: Button
+    private lateinit var btnManage: Button
     private lateinit var scanFlash: android.widget.TextView
 
     private lateinit var adapter: ItemAdapter
 
-    private val items = mutableListOf<ScanItem>()
+    private val items get() = ScanStore.items
 
     // —— 当前缓冲（待录入，跨帧/多码累积合并）——
     private val scannedRaws = mutableSetOf<String>()
@@ -71,7 +69,6 @@ class MainActivity : AppCompatActivity() {
 
     private val camPerm = Manifest.permission.CAMERA
     private val rcCam = 1001
-    private val rcImport = 1002
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,10 +85,7 @@ class MainActivity : AppCompatActivity() {
         btnQuery = findViewById(R.id.btn_query)
         btnAdd = findViewById(R.id.btn_add)
         btnDiscard = findViewById(R.id.btn_discard)
-        btnExportJson = findViewById(R.id.btn_export_json)
-        btnExportCsv = findViewById(R.id.btn_export_csv)
-        btnClear = findViewById(R.id.btn_clear)
-        btnDict = findViewById(R.id.btn_dict)
+        btnManage = findViewById(R.id.btn_manage)
         scanFlash = findViewById(R.id.scan_flash)
 
         scanner.decodeContinuous(object : BarcodeCallback {
@@ -120,10 +114,9 @@ class MainActivity : AppCompatActivity() {
         }
         btnAdd.setOnClickListener { commitBuffer() }
         btnDiscard.setOnClickListener { clearBuffer() }
-        btnExportJson.setOnClickListener { exportJson() }
-        btnExportCsv.setOnClickListener { exportCsv() }
-        btnClear.setOnClickListener { clearList() }
-        btnDict.setOnClickListener { openDictManager() }
+        btnManage.setOnClickListener {
+            startActivity(Intent(this, ManageActivity::class.java))
+        }
 
         // 长按缓冲「产品」区 → 直接编辑当前 UDI 字典
         tvProduct.setOnClickListener {
@@ -143,6 +136,7 @@ class MainActivity : AppCompatActivity() {
             flashScanFeedback("无法识别", false)
             return
         }
+        beep()  // 识别到有效字段即「滴」一声
 
         // 按类型合并：每类只取第一个尚未填的，避免重复覆盖用户已确认的值
         for (f in parsed.fields) {
@@ -232,6 +226,17 @@ class MainActivity : AppCompatActivity() {
             feedbackTimer = android.os.Handler(android.os.Looper.getMainLooper()).apply {
                 postDelayed({ flash.visibility = android.view.View.GONE }, 1400)
             }
+        }
+    }
+
+    /** 扫码成功（识别到有效字段）时播放系统提示音，零依赖、无需额外素材。 */
+    private fun beep() {
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val ringtone = RingtoneManager.getRingtone(this, uri)
+            ringtone.play()
+        } catch (e: Exception) {
+            // 个别机型无声也不影响扫码流程
         }
     }
 
@@ -340,76 +345,6 @@ class MainActivity : AppCompatActivity() {
         updateBufferUi()
     }
 
-    // ——— 导出 ———
-    private fun exportDir(): File {
-        val d = File(filesDir, "exports")
-        if (!d.exists()) d.mkdirs()
-        return d
-    }
-
-    private fun exportJson() {
-        if (items.isEmpty()) { toast(R.string.toast_list_empty); return }
-        val arr = JSONArray()
-        for (it in items) {
-            arr.put(JSONObject().apply {
-                put("udi_di", it.udiDi ?: "")
-                put("batch", it.batch ?: "")
-                put("expiry", it.expiry ?: "")
-                put("production", it.production ?: "")
-                put("serial", it.serial ?: "")
-                put("serial_ai", it.serialAi ?: "")
-                put("product_name", it.productName ?: "")
-                put("specification", it.specification ?: "")
-                put("company_name", it.companyName ?: "")
-                put("nmpa_state", it.nmpaState)
-                put("quantity", it.quantity)
-                put("raw", it.raw)
-                put("scanned_at", it.scannedAt)
-            })
-        }
-        val file = File(exportDir(), "udi_scan_${System.currentTimeMillis()}.json")
-        file.writeText(arr.toString(2), Charsets.UTF_8)
-        shareFile(file, "application/json")
-    }
-
-    private fun exportCsv() {
-        if (items.isEmpty()) { toast(R.string.toast_list_empty); return }
-        val header = listOf(
-            "UDI-DI", "产品名称", "规格", "厂家", "批号", "效期",
-            "生产日期", "序列号", "序列AI", "NMPA状态", "数量", "扫码时间"
-        )
-        val sb = StringBuilder()
-        sb.append(header.joinToString(",")).append("\n")
-        for (it in items) {
-            val row = listOf(
-                it.udiDi ?: "", it.productName ?: "", it.specification ?: "", it.companyName ?: "",
-                it.batch ?: "", Gs1Parser.formatDateYYMMDD(it.expiry) ?: (it.expiry ?: ""),
-                Gs1Parser.formatDateYYMMDD(it.production) ?: (it.production ?: ""),
-                it.serial ?: "", it.serialAi ?: "", it.nmpaState, it.quantity.toString(), it.scannedAt
-            )
-            sb.append(row.joinToString(",") { csvCell(it) }).append("\n")
-        }
-        val file = File(exportDir(), "udi_scan_${System.currentTimeMillis()}.csv")
-        file.writeText(sb.toString(), Charsets.UTF_8)
-        shareFile(file, "text/csv")
-    }
-
-    private fun csvCell(s: String): String =
-        if (s.contains(',') || s.contains('"') || s.contains('\n')) {
-            "\"" + s.replace("\"", "\"\"") + "\""
-        } else s
-
-    private fun shareFile(file: File, mime: String) {
-        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = mime
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(intent, "导出 / 分享"))
-        toast(R.string.toast_exported)
-    }
-
     // ——— 编辑当前缓冲产品（写入 override）———
     private fun editCurrentProduct() {
         val udi = bufUdi ?: run { toast(R.string.toast_no_udi); return }
@@ -455,81 +390,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("取消", null)
             .show()
-    }
-
-    // ——— 字典管理：导出/导入 override（多设备同步）———
-    private fun openDictManager() {
-        val ctx = this
-        val msg = "本地覆盖字典：${NmpaCache.overrideCount()} 条\n" +
-                "NMPA 官方缓存：${NmpaCache.count()} 条\n\n" +
-                "导出：把覆盖字典存成 udi_overrides.json，通过微信/网盘发给其他设备。\n" +
-                "导入：选择其他设备发来的 udi_overrides.json，合并到本机。"
-        AlertDialog.Builder(ctx)
-            .setTitle("产品字典管理")
-            .setMessage(msg)
-            .setPositiveButton("导出字典") { _, _ -> exportOverrides() }
-            .setNeutralButton("导入字典") { _, _ -> importOverrides() }
-            .setNegativeButton("关闭", null)
-            .show()
-    }
-
-    private fun exportOverrides() {
-        val json = NmpaCache.exportOverridesJson()
-        val file = File(exportDir(), "udi_overrides.json")
-        file.writeText(json, Charsets.UTF_8)
-        shareFile(file, "application/json")
-        toast(R.string.toast_exported)
-    }
-
-    private fun importOverrides() {
-        // 拉起文件选择（含微信/网盘接收的文件）
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/json"
-        }
-        startActivityForResult(Intent.createChooser(intent, "选择 udi_overrides.json"), rcImport)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == rcImport && resultCode == RESULT_OK && data != null) {
-            val uri = data.data ?: return
-            Thread {
-                var n = 0
-                try {
-                    val sb = StringBuilder()
-                    contentResolver.openInputStream(uri)?.use { ins ->
-                        BufferedReader(ins.reader(Charsets.UTF_8)).useLines { lines ->
-                            lines.forEach { sb.append(it) }
-                        }
-                    }
-                    val arr = JSONArray(sb.toString())
-                    val list = mutableListOf<NmpaCache.OverrideEntry>()
-                    for (i in 0 until arr.length()) {
-                        val o = arr.getJSONObject(i)
-                        list.add(NmpaCache.OverrideEntry(
-                            udi = o.optString("udi", ""),
-                            name = o.optString("name", "").let { if (it.isEmpty()) null else it },
-                            spec = o.optString("spec", "").let { if (it.isEmpty()) null else it },
-                            company = o.optString("company", "").let { if (it.isEmpty()) null else it }
-                        ))
-                    }
-                    n = NmpaCache.importOverrides(list)
-                } catch (e: Exception) {
-                    runOnUiThread { toast(R.string.toast_import_err) }
-                    return@Thread
-                }
-                runOnUiThread {
-                    toast(getString(R.string.toast_imported, n))
-                }
-            }.start()
-        }
-    }
-
-    private fun clearList() {
-        if (items.isEmpty()) return
-        items.clear()
-        adapter.notifyDataSetChanged()
     }
 
     // ——— 相机权限 ———

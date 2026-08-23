@@ -83,28 +83,52 @@ object Gs1Parser {
         if (digitsOnly.matches(Regex("^\\d+$"))) {
             val digits = digitsOnly
             val fields = when {
+                // 14 位：仅在通过 GTIN-14 校验位时才敢当作 UDI；否则降级为「待确认」，
+                // 避免把随机 14 位数字（如物流码、序列号）错当成 UDI「完全对不上」。
                 digits.length == 14 -> {
-                    // 14 位：UDI/GTIN。但若缓冲已有 UDI，则新扫到的 14 位数字极可能是别的码（如序列号），判为未知让用户确认
-                    if (alreadyHasUdi) listOf(Field(FieldType.UNKNOWN, null, digits))
-                    else listOf(Field(FieldType.UDI, "01", digits))
+                    if (isValidGtin14(digits)) {
+                        if (alreadyHasUdi) listOf(Field(FieldType.UNKNOWN, null, digits))
+                        else listOf(Field(FieldType.UDI, "01", digits))
+                    } else {
+                        listOf(Field(FieldType.UNKNOWN, null, digits))
+                    }
+                }
+                // 13 位 EAN-13：补校验位成 GTIN-14 验证，过则视为 UDI
+                digits.length == 13 -> {
+                    val g14 = "0$digits"
+                    if (isValidGtin14(g14)) {
+                        if (alreadyHasUdi) listOf(Field(FieldType.UNKNOWN, null, g14))
+                        else listOf(Field(FieldType.UDI, "01", g14))
+                    } else listOf(Field(FieldType.UNKNOWN, null, digits))
                 }
                 digits.length == 6 && looksLikeDate(digits) -> {
                     // 6 位且像日期：优先效期(17)，UI 也可让用户改
                     listOf(Field(FieldType.EXPIRY, "17", digits))
                 }
-                digits.length in 8..20 -> listOf(Field(FieldType.UNKNOWN, null, digits))
-                else -> listOf(Field(FieldType.UNKNOWN,  null, digits))
+                digits.length in 7..20 -> listOf(Field(FieldType.UNKNOWN, null, digits))
+                else -> listOf(Field(FieldType.UNKNOWN, null, digits))
             }
             return Gs1Result(fields, raw)
         }
 
         // 含字母数字但没有 GS1 标记（如 LOT123、TEXT 等）：当作批号/未知
-        if (!hasFnc1 && !isGs1) {
-            return Gs1Result(listOf(Field(FieldType.UNKNOWN, null, raw)), raw)
-        }
+        return Gs1Result(listOf(Field(FieldType.UNKNOWN, null, raw)), raw)
+    }
 
-        // 其它带标记但解析不出：尽力顺序切分
-        return parseStructured(s, fnc1)
+    /**
+     * GTIN-14 / EAN-13 校验位验证（GS1 标准 mod10，奇数位乘 3）。
+     * 用于在没有 GS1 括号/FNC1 标记时，判断一段纯数字到底是不是合法的 UDI/GTIN，
+     * 从而大幅降低「随机数字串被误判为 UDI」的错位。
+     */
+    fun isValidGtin14(gtin: String): Boolean {
+        if (gtin.length != 14 || !gtin.all { it.isDigit() }) return false
+        val sum = gtin.take(13).mapIndexed { i, c ->
+            val d = c.digitToInt()
+            if (i % 2 == 0) d * 3 else d
+        }.sum()
+        val check = (10 - (sum % 10)) % 10
+        return check == gtin.last().digitToInt()
+    }
     }
 
     private fun parseStructured(s: String, fnc1: Char): Gs1Result {
