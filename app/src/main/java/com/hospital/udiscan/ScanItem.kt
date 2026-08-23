@@ -15,10 +15,10 @@ data class ScanItem(
     val production: String?,   // (11) 生产日期
     val serial: String?,       // (21) 或 (91) 序列号
     val serialAi: String?,     // "21" / "91"
-    val productName: String?,
-    val specification: String?,
-    val companyName: String?,
-    val nmpaState: String,     // ok | pending | skip | err | none
+    var productName: String?,
+    var specification: String?,
+    var companyName: String?,
+    var nmpaState: String,     // ok | local | pending | skip | err | none
     var quantity: Int,
     val raw: String,
     val scannedAt: String
