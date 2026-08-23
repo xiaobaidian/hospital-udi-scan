@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">UDI 扫码盘点</string>
+    <string name="hint_scan">将条码放入取景框，支持一图多码 / 多帧累积</string>
+    <string name="btn_query">查 NMPA</string>
+    <string name="btn_add">加入清单</string>
+    <string name="btn_discard">丢弃</string>
+    <string name="btn_export_json">导出 JSON</string>
+    <string name="btn_export_csv">导出 CSV</string>
+    <string name="btn_clear">清空清单</string>
+    <string name="buffer_title">当前待录入</string>
+    <string name="list_empty">清单为空，扫码后点「加入清单」</string>
+    <string name="toast_no_camera">未授予相机权限，无法扫码</string>
+    <string name="toast_no_udi">未识别到 UDI（01），仍可手动加入</string>
+    <string name="toast_querying">正在查询 NMPA…</string>
+    <string name="toast_query_ok">已查到：%1$s</string>
+    <string name="toast_query_pending">命中待核对，请人工确认</string>
+    <string name="toast_query_skip">NMPA 无记录</string>
+    <string name="toast_query_err">查询失败，可稍后重查</string>
+    <string name="toast_exported">已导出，选择应用分享/保存</string>
+    <string name="toast_list_empty">清单为空，无法导出</string>
+    <string name="perm_rationale">需要相机权限才能扫码</string>
+</resources>
