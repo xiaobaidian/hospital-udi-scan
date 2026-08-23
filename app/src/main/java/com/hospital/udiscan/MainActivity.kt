@@ -2,12 +2,15 @@ package com.hospital.udiscan
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.pm.Package  anager
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -19,7 +22,9 @@ import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
+import java.io.FileReader
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
@@ -37,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnExportJson: Button
     private lateinit var btnExportCsv: Button
     private lateinit var btnClear: Button
+    private lateinit var btnDict: Button
 
     private lateinit var adapter: ItemAdapter
 
@@ -59,6 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     private val camPerm = Manifest.permission.CAMERA
     private val rcCam = 1001
+    private val rcImport = 1002
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         btnExportJson = findViewById(R.id.btn_export_json)
         btnExportCsv = findViewById(R.id.btn_export_csv)
         btnClear = findViewById(R.id.btn_clear)
+        btnDict = findViewById(R.id.btn_dict)
 
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
@@ -88,10 +96,13 @@ class MainActivity : AppCompatActivity() {
             override fun possibleResultPoints(points: List<com.google.zxing.ResultPoint>) {}
         })
 
-        adapter = ItemAdapter(items) { pos ->
-            items.removeAt(pos)
-            adapter.notifyItemRemoved(pos)
-        }
+        adapter = ItemAdapter(items,
+            onDelete = { pos ->
+                items.removeAt(pos)
+                adapter.notifyItemRemoved(pos)
+            },
+            onEdit = { pos -> editListItem(pos) }
+        )
         listItems.layoutManager = LinearLayoutManager(this)
         listItems.adapter = adapter
 
@@ -105,6 +116,12 @@ class MainActivity : AppCompatActivity() {
         btnExportJson.setOnClickListener { exportJson() }
         btnExportCsv.setOnClickListener { exportCsv() }
         btnClear.setOnClickListener { clearList() }
+        btnDict.setOnClickListener { openDictManager() }
+
+        // 长按缓冲「产品」区 → 直接编辑当前 UDI 字典
+        tvProduct.setOnClickListener {
+            if (!bufUdi.isNullOrEmpty()) editCurrentProduct()
+        }
 
         updateBufferUi()
     }
@@ -152,6 +169,7 @@ class MainActivity : AppCompatActivity() {
         tvBuffer.text = b.toString()
         tvProduct.text = when (bufNmpaState) {
             "ok" -> "✓ ${bufProduct ?: ""}"
+            "local" -> "✎本地字典：${bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${bufProduct ?: ""}"
             "skip" -> "✗ NMPA 无记录"
             "err" -> "✗ 查询失败"
@@ -165,12 +183,12 @@ class MainActivity : AppCompatActivity() {
         updateBufferUi()
         toast(R.string.toast_querying)
         Thread {
-            // 1) 先查本地缓存（落过库的直接复用，不再联网）
-            val cached = NmpaCache.get(udi)
-            val r = if (cached != null) {
-                cached
+            // 1) 本地合并读取：override（手改/手补）优先，其次官方缓存
+            val (local, fromOverride) = NmpaCache.getMerged(udi)
+            val r = if (local != null) {
+                if (fromOverride) local.copy(state = "local") else local
             } else {
-                // 2) 缓存未命中 → 联网查，成功后落库
+                // 2) 本地均无 → 联网查 NMPA，成功后落官方缓存
                 val net = NmpaClient.query(udi)
                 if (net.state != "err") NmpaCache.put(udi, net)
                 net
@@ -184,6 +202,7 @@ class MainActivity : AppCompatActivity() {
                 updateBufferUi()
                 when (r.state) {
                     "ok" -> toast(getString(R.string.toast_query_ok, r.productName ?: ""))
+                    "local" -> toast(R.string.toast_query_local)
                     "pending" -> toast(R.string.toast_query_pending)
                     "skip" -> toast(R.string.toast_query_skip)
                     "err" -> toast(R.string.toast_query_err)
@@ -214,6 +233,31 @@ class MainActivity : AppCompatActivity() {
         listItems.scrollToPosition(0)
         clearBuffer()
         if (item.udiDi.isNullOrEmpty()) toast(R.string.toast_no_udi)
+    }
+
+    // ——— 编辑已有清单条目：写 override 并就地刷新 item ———
+    private fun editListItem(pos: Int) {
+        if (pos < 0 || pos >= items.size) return
+        val it = items[pos]
+        val udi = it.udiDi ?: run { toast(R.string.toast_no_udi); return }
+        val existing = NmpaCache.getOverride(udi)
+                ?: NmpaCache.get(udi)
+        showEditDialog(udi, existing?.productName ?: it.productName,
+                existing?.specification ?: it.specification,
+                existing?.companyName ?: it.companyName)
+        // 对话框保存后，就地同步到该条目（保证导出也是修正后的值）
+        // 注意：showEditDialog 内部已写 DB；这里在返回后直接按需刷新展示字段
+        // 为避免重复弹窗逻辑，采用“同意保存后”通过一次轻量重查覆盖：
+        Thread {
+            val merged = NmpaCache.getMerged(udi).first
+            runOnUiThread {
+                it.productName = merged?.productName ?: it.productName
+                it.specification = merged?.specification ?: it.specification
+                it.companyName = merged?.companyName ?: it.companyName
+                it.nmpaState = if (NmpaCache.getOverride(udi) != null) "local" else it.nmpaState
+                adapter.notifyItemChanged(pos)
+            }
+        }.start()
     }
 
     private fun clearBuffer() {
@@ -293,6 +337,122 @@ class MainActivity : AppCompatActivity() {
         }
         startActivity(Intent.createChooser(intent, "导出 / 分享"))
         toast(R.string.toast_exported)
+    }
+
+    // ——— 编辑当前缓冲产品（写入 override）———
+    private fun editCurrentProduct() {
+        val udi = bufUdi ?: run { toast(R.string.toast_no_udi); return }
+        // 先读已有覆盖值作默认值
+        val existing = NmpaCache.getOverride(udi)
+                ?: NmpaCache.get(udi)
+        showEditDialog(udi, existing?.productName, existing?.specification, existing?.companyName)
+    }
+
+    /**
+     * 编辑对话框：改名/规格/厂家，写入 udi_override。
+     * 不论该 UDI 之前是官方查回还是查不到，都会被用户覆盖生效（override 优先）。
+     */
+    private fun showEditDialog(udi: String, defName: String?, defSpec: String?, defCompany: String?) {
+        val ctx = this
+        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_edit_product, null)
+        val etName = view.findViewById<EditText>(R.id.et_name)
+        val etSpec = view.findViewById<EditText>(R.id.et_spec)
+        val etCompany = view.findViewById<EditText>(R.id.et_company)
+        etName.setText(defName ?: "")
+        etSpec.setText(defSpec ?: "")
+        etCompany.setText(defCompany ?: "")
+        AlertDialog.Builder(ctx)
+            .setTitle("编辑产品字典")
+            .setMessage("UDI(01): $udi")
+            .setView(view)
+            .setPositiveButton("保存") { _, _ ->
+                val name = etName.text.toString().trim().let { if (it.isEmpty()) null else it }
+                val spec = etSpec.text.toString().trim().let { if (it.isEmpty()) null else it }
+                val company = etCompany.text.toString().trim().let { if (it.isEmpty()) null else it }
+                NmpaCache.putOverride(udi, name, spec, company)
+                // 同步刷新缓冲展示
+                if (bufUdi == udi) {
+                    bufProduct = name ?: bufProduct
+                    bufSpec = spec ?: bufSpec
+                    bufCompany = company ?: bufCompany
+                    if (bufNmpaState == "skip" || bufNmpaState == "err" || bufNmpaState == "none") {
+                        bufNmpaState = "local"
+                    }
+                    updateBufferUi()
+                }
+                toast(R.string.toast_saved)
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    // ——— 字典管理：导出/导入 override（多设备同步）———
+    private fun openDictManager() {
+        val ctx = this
+        val msg = "本地覆盖字典：${NmpaCache.overrideCount()} 条\n" +
+                "NMPA 官方缓存：${NmpaCache.count()} 条\n\n" +
+                "导出：把覆盖字典存成 udi_overrides.json，通过微信/网盘发给其他设备。\n" +
+                "导入：选择其他设备发来的 udi_overrides.json，合并到本机。"
+        AlertDialog.Builder(ctx)
+            .setTitle("产品字典管理")
+            .setMessage(msg)
+            .setPositiveButton("导出字典") { _, _ -> exportOverrides() }
+            .setNeutralButton("导入字典") { _, _ -> importOverrides() }
+            .setNegativeButton("关闭", null)
+            .show()
+    }
+
+    private fun exportOverrides() {
+        val json = NmpaCache.exportOverridesJson()
+        val file = File(exportDir(), "udi_overrides.json")
+        file.writeText(json, Charsets.UTF_8)
+        shareFile(file, "application/json")
+        toast(R.string.toast_exported)
+    }
+
+    private fun importOverrides() {
+        // 拉起文件选择（含微信/网盘接收的文件）
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+        }
+        startActivityForResult(Intent.createChooser(intent, "选择 udi_overrides.json"), rcImport)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == rcImport && resultCode == RESULT_OK && data != null) {
+            val uri = data.data ?: return
+            Thread {
+                var n = 0
+                try {
+                    val sb = StringBuilder()
+                    contentResolver.openInputStream(uri)?.use { ins ->
+                        BufferedReader(ins.reader(Charsets.UTF_8)).useLines { lines ->
+                            lines.forEach { sb.append(it) }
+                        }
+                    }
+                    val arr = JSONArray(sb.toString())
+                    val list = mutableListOf<NmpaCache.OverrideEntry>()
+                    for (i in 0 until arr.length()) {
+                        val o = arr.getJSONObject(i)
+                        list.add(NmpaCache.OverrideEntry(
+                            udi = o.optString("udi", ""),
+                            name = o.optString("name", "").let { if (it.isEmpty()) null else it },
+                            spec = o.optString("spec", "").let { if (it.isEmpty()) null else it },
+                            company = o.optString("company", "").let { if (it.isEmpty()) null else it }
+                        ))
+                    }
+                    n = NmpaCache.importOverrides(list)
+                } catch (e: Exception) {
+                    runOnUiThread { toast(R.string.toast_import_err) }
+                    return@Thread
+                }
+                runOnUiThread {
+                    toast(getString(R.string.toast_imported, n))
+                }
+            }.start()
+        }
     }
 
     private fun clearList() {

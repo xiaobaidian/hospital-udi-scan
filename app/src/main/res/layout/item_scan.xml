@@ -36,6 +36,14 @@
                 android:textSize="11sp" />
 
             <Button
+                android:id="@+id/btn_edit"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:text="编辑"
+                android:textSize="12sp" />
+
+            <Button
                 android:id="@+id/btn_del"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="32dp"

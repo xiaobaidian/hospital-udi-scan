@@ -10,7 +10,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 class ItemAdapter(
     private val items: MutableList<ScanItem>,
-    private val onDelete: (Int) -> Unit
+    private val onDelete: (Int) -> Unit,
+    private val onEdit: (Int) -> Unit
 ) : RecyclerView.Adapter<ItemAdapter.VH>() {
 
     class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -19,6 +20,7 @@ class ItemAdapter(
         val tvMeta: TextView = itemView.findViewById(R.id.tv_meta)
         val tvState: TextView = itemView.findViewById(R.id.tv_state)
         val btnDel: Button = itemView.findViewById(R.id.btn_del)
+        val btnEdit: Button = itemView.findViewById(R.id.btn_edit)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -34,6 +36,7 @@ class ItemAdapter(
 
         val (txt, color) = when (it.nmpaState) {
             "ok" -> "已查" to R.color.ok
+            "local" -> "本地" to R.color.ok
             "pending" -> "待核对" to R.color.pending
             "skip" -> "无记录" to R.color.skip
             "err" -> "查询失败" to R.color.skip
@@ -42,6 +45,7 @@ class ItemAdapter(
         holder.tvState.text = txt
         holder.tvState.setTextColor(ContextCompat.getColor(holder.itemView.context, color))
         holder.btnDel.setOnClickListener { onDelete(position) }
+        holder.btnEdit.setOnClickListener { onEdit(position) }
     }
 
     override fun getItemCount(): Int = items.size
