@@ -32,18 +32,47 @@ jobs:
         run: |
           sed -i 's#mirrors.cloud.tencent.com/gradle/gradle-8.14.3-all.zip#services.gradle.org/distributions/gradle-8.14.3-all.zip#' gradle/wrapper/gradle-wrapper.properties
 
-      - name: Build debug APK
+      - name: Build debug APK (capture log)
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon > /tmp/build.log 2>&1
+
+      - name: Upload build log for diagnosis (to diag branch)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import os, base64, json, urllib.request, urllib.error
+          token=os.environ['GH_TOKEN']; repo=os.environ['REPO']
+          log=open('/tmp/build.log','rb').read()
+          if len(log)>80000: log=log[-80000:]
+          content=base64.b64encode(log).decode()
+          url=f"https://api.github.com/repos/{repo}/contents/build_error.log"
+          req=urllib.request.Request(url); req.add_header("Authorization",f"token {token}"); req.add_header("User-Agent","x")
+          sha=None
+          try:
+              with urllib.request.urlopen(req,timeout=30) as r: sha=json.loads(r.read()).get('sha')
+          except Exception: sha=None
+          data={"message":"build log","content":content,"branch":"diag"}
+          if sha: data["sha"]=sha
+          req2=urllib.request.Request(url,data=json.dumps(data).encode(),method="PUT")
+          req2.add_header("Authorization",f"token {token}"); req2.add_header("User-Agent","x"); req2.add_header("Content-Type","application/json")
+          try:
+              with urllib.request.urlopen(req2,timeout=30) as r: print("uploaded",r.status)
+          except urllib.error.HTTPError as e: print("upload err",e.code,e.read()[:200])
+          PY
 
       - name: Upload APK artifact (Actions)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Publish APK to Release (公开直链)
+        if: success()
         uses: ncipollo/release-action@v1
         with:
           artifacts: "app/build/outputs/apk/debug/app-debug.apk"
