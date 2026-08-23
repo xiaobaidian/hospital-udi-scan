@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnExportCsv: Button
     private lateinit var btnClear: Button
     private lateinit var btnDict: Button
+    private lateinit var scanFlash: android.widget.TextView
 
     private lateinit var adapter: ItemAdapter
 
@@ -59,9 +60,14 @@ class MainActivity : AppCompatActivity() {
     private var bufProduct: String? = null
     private var bufSpec: String? = null
     private var bufCompany: String? = null
-    private var bufNmpaState: String = "none"
+    private var bufNmpaState: String = "  "
     private var bufQty: Int = 1
     private var queriedUdi: String? = null
+    // 待确认（未知段）：缓冲还没有 UDI 时，暂存未归类的纯数字/文本，供「加入清单」时再提示
+    private var bufPendingUnknown: List<String> = emptyList()
+
+    // —— 扫码闪光反馈 ——
+    private var feedbackTimer: android.os.Handler? = null
 
     private val camPerm = Manifest.permission.CAMERA
     private val rcCam = 1001
@@ -86,6 +92,7 @@ class MainActivity : AppCompatActivity() {
         btnExportCsv = findViewById(R.id.btn_export_csv)
         btnClear = findViewById(R.id.btn_clear)
         btnDict = findViewById(R.id.btn_dict)
+        scanFlash = findViewById(R.id.scan_flash)
 
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
@@ -126,31 +133,40 @@ class MainActivity : AppCompatActivity() {
         updateBufferUi()
     }
 
-    // ——— 扫码回调：合并到缓冲 ———
+    // ——— 扫码回调：按字段「语义类型」合并到缓冲（而非按出现顺序填坑）———
     private fun onScanned(text: String) {
         if (!scannedRaws.add(text)) return   // 本次缓冲内重复，跳过（连续扫码同一帧）
 
-        // 让解析器按 FNC1/括号/数字 自动判定 GS1，无需依赖元数据标记
-        val res = Gs1Parser.parse(text)
-        if (!res.isGs1) {
-            if (bufUdi == null && bufBatch == null && bufExpiry == null && bufSerial == null) {
-                bufSerial = text
-                bufSerialAi = "91"
-                updateBufferUi()
-            }
+        val parsed = Gs1Parser.parse(text, alreadyHasUdi = bufUdi != null)
+        if (parsed.fields.isEmpty()) {
+            // 连纯文本都不是：当作未知，提示用户
+            flashScanFeedback("无法识别", false)
             return
         }
 
-        res.fields["01"]?.let { if (bufUdi == null) bufUdi = it }
-        res.fields["10"]?.let { if (bufBatch == null) bufBatch = it }
-        res.fields["17"]?.let { if (bufExpiry == null) bufExpiry = it }
-        res.fields["11"]?.let { if (bufProduction == null) bufProduction = it }
-        val s21 = res.fields["21"]
-        val s91 = res.fields["91"]
-        when {
-            s21 != null && bufSerial == null -> { bufSerial = s21; bufSerialAi = "21" }
-            s91 != null && bufSerial == null -> { bufSerial = s91; bufSerialAi = "91" }
+        // 按类型合并：每类只取第一个尚未填的，避免重复覆盖用户已确认的值
+        for (f in parsed.fields) {
+            when (f.type) {
+                Gs1Parser.FieldType.UDI ->
+                    if (bufUdi == null) { bufUdi = f.value; bufRawUdi = f }
+                Gs1Parser.FieldType.BATCH ->
+                    if (bufBatch == null) bufBatch = f.value
+                Gs1Parser.FieldType.EXPIRY ->
+                    if (bufExpiry == null) { bufExpiry = f.value; bufRawExpiry = f }
+                Gs1Parser.FieldType.PROD_DATE ->
+                    if (bufProduction == null) bufProduction = f.value
+                Gs1Parser.FieldType.SERIAL ->
+                    if (bufSerial == null) { bufSerial = f.value; bufSerialAi = f.ai ?: "21" }
+                Gs1Parser.FieldType.UNKNOWN -> Unit  // 未知稍后处理
+            }
         }
+        // 未明确归类的未知段（如纯数字歧义），若缓冲还没 UDI，先暂存为「待确认」
+        val unknowns = parsed.fields.filter { it.type == Gs1Parser.FieldType.UNKNOWN }
+        if (unknowns.isNotEmpty() && bufUdi == null) {
+            bufPendingUnknown = unknowns.map { it.value }
+        }
+
+        flashScanFeedback(describeScan(parsed, unknowns), true)
         updateBufferUi()
 
         if (!bufUdi.isNullOrEmpty() && bufUdi != queriedUdi) {
@@ -159,23 +175,64 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 生成「识别为：xxx」的简短反馈文字。 */
+    private fun describeScan(res: Gs1Parser.Gs1Result, unknowns: List<Gs1Parser.Field>): String {
+        val types = res.fields.mapNotNull { labelOf(it.type) }
+        val extra = if (unknowns.isNotEmpty()) " · 待确认 ${unknowns.size} 段" else ""
+        return "识别：" + (types.distinct().joinToString(" ") { "「$it」" }) + extra
+    }
+
+    private fun labelOf(t: Gs1Parser.FieldType): String = when (t) {
+        Gs1Parser.FieldType.UDI -> "UDI"
+        Gs1Parser.FieldType.BATCH -> "批号"
+        Gs1Parser.FieldType.EXPIRY -> "效期"
+        Gs1Parser.FieldType.PROD_DATE -> "生产"
+        Gs1Parser.FieldType.SERIAL -> "序列号"
+        Gs1Parser.FieldType.UNKNOWN -> "未归类"
+    }
+
     private fun updateBufferUi() {
         val b = StringBuilder()
-        b.append("UDI(01): ").append(bufUdi ?: "—").append("\n")
-        b.append("批号(10): ").append(bufBatch ?: "—").append("    ")
-        b.append("效期(17): ").append(Gs1Parser.formatDateYYMMDD(bufExpiry) ?: bufExpiry ?: "—").append("\n")
-        b.append("生产(11): ").append(Gs1Parser.formatDateYYMMDD(bufProduction) ?: bufProduction ?: "—").append("    ")
-        b.append("序列(${bufSerialAi ?: "?"}): ").append(bufSerial ?: "—")
+        appendField(b, "UDI(01)", bufUdi, true)
+        appendField(b, "批号(10)", bufBatch)
+        appendField(b, "效期(17)", Gs1Parser.formatDateYYMMDD(bufExpiry) ?: bufExpiry)
+        appendField(b, "生产(11)", Gs1Parser.formatDateYYMMDD(bufProduction) ?: bufProduction)
+        appendField(b, "序列(${bufSerialAi ?: "?"}", bufSerial)
+        if (bufPendingUnknown.isNotEmpty()) {
+            b.append("\n⚠ 待确认：").append(bufPendingUnknown.joinToString(" / "))
+        }
         tvBuffer.text = b.toString()
-        tvProduct.text = when (bufNmpaState) {
+        tvProduct.text = when (  bufNmpaState) {
             "ok" -> "✓ ${bufProduct ?: ""}"
             "local" -> "✎本地字典：${bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${bufProduct ?: ""}"
             "skip" -> "✗ NMPA 无记录"
             "err" -> "✗ 查询失败"
+            "querying" -> "… 查询中"
             else -> bufProduct ?: ""
         }
         tvQty.text = bufQty.toString()
+    }
+
+    private fun appendField(b: StringBuilder, label: String, value: String?, strong: Boolean = false) {
+        val v = value ?: "—"
+        if (strong) b.append("► $label: $v\n") else b.append("  $label: $v\n")
+    }
+
+    /** 扫码成功/失败时的视觉反馈：顶部闪光条 + 文字提示。 */
+    private fun flashScanFeedback(msg: String, ok: Boolean) {
+        scanFlash?.let { flash ->
+            flash.text = msg
+            flash.visibility = android.view.View.VISIBLE
+            flash.setBackgroundColor(
+                if (ok) 0xFF2E7D32.toInt() else 0xFFC62828.toInt()
+            )
+            flash.alpha = 1f
+            feedbackTimer?.removeCallbacksAndMessages(null)
+            feedbackTimer = android.os.Handler(android.os.Looper.getMainLooper()).apply {
+                postDelayed({ flash.visibility = android.view.View.GONE }, 1400)
+            }
+        }
     }
 
     private fun queryNmpa(udi: String) {
@@ -211,6 +268,19 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    /** 汇总本次缓冲的原始扫码内容（含待确认段），用于导出与审计。 */
+    private fun buildRaw(): String {
+        val parts = mutableListOf<String>()
+        bufUdi?.let { parts.add("(01)$it") }
+        bufBatch?.let { parts.add("(10)$it") }
+        bufExpiry?.let { parts.add("(17)$it") }
+        bufProduction?.let { parts.add("(11)$it") }
+        bufSerial?.let { parts.add("(${bufSerialAi ?: "21"})$it") }
+        parts.addAll(bufPendingUnknown.map { "待确认:$it" })
+        if (parts.isEmpty()) parts.addAll(scannedRaws)
+        return parts.joinToString(" | ")
+    }
+
     private fun commitBuffer() {
         val item = ScanItem(
             id = UUID.randomUUID().toString(),
@@ -225,7 +295,7 @@ class MainActivity : AppCompatActivity() {
             companyName = bufCompany,
             nmpaState = bufNmpaState,
             quantity = bufQty,
-            raw = scannedRaws.joinToString(" | "),
+            raw = buildRaw(),
             scannedAt = ScanItem.nowStamp()
         )
         items.add(0, item)
@@ -266,6 +336,7 @@ class MainActivity : AppCompatActivity() {
         bufSerial = null; bufSerialAi = null
         bufProduct = null; bufSpec = null; bufCompany = null
         bufNmpaState = "none"; bufQty = 1; queriedUdi = null
+        bufPendingUnknown = emptyList()
         updateBufferUi()
     }
 
