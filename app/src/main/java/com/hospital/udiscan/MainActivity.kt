@@ -5,11 +5,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
@@ -20,14 +24,26 @@ import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
     private lateinit var scanner: DecoratedBarcodeView
+    private lateinit var tvBuffer: TextView
+    private lateinit var tvProduct: TextView
+    private lateinit var tvQty: TextView
+    private lateinit var listItems: RecyclerView
+    private lateinit var btnPlus: Button
+    private lateinit var btnMinus: Button
+    private lateinit var btnQuery: Button
+    private lateinit var btnAdd: Button
+    private lateinit var btnDiscard: Button
+    private lateinit var btnExportJson: Button
+    private lateinit var btnExportCsv: Button
+    private lateinit var btnClear: Button
+
     private lateinit var adapter: ItemAdapter
 
     private val items = mutableListOf<ScanItem>()
 
     // —— 当前缓冲（待录入，跨帧/多码累积合并）——
-    private val scannedRaws = mutableSetOf<String>()   // 本次缓冲内已见过的原始串，去重
+    private val scannedRaws = mutableSetOf<String>()
     private var bufUdi: String? = null
     private var bufBatch: String? = null
     private var bufExpiry: String? = null
@@ -46,15 +62,27 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
+        NmpaCache.init(this)
 
-        scanner = binding.barcodeScanner
+        scanner = findViewById(R.id.barcode_scanner)
+        tvBuffer = findViewById(R.id.tv_buffer)
+        tvProduct = findViewById(R.id.tv_product)
+        tvQty = findViewById(R.id.tv_qty)
+        listItems = findViewById(R.id.list_items)
+        btnPlus = findViewById(R.id.btn_plus)
+        btnMinus = findViewById(R.id.btn_minus)
+        btnQuery = findViewById(R.id.btn_query)
+        btnAdd = findViewById(R.id.btn_add)
+        btnDiscard = findViewById(R.id.btn_discard)
+        btnExportJson = findViewById(R.id.btn_export_json)
+        btnExportCsv = findViewById(R.id.btn_export_csv)
+        btnClear = findViewById(R.id.btn_clear)
+
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
                 val text = result.text ?: return
-                onScanned(text, result.result.metadata?.get(
-                    com.google.zxing.ResultMetadataType.GS1) as? Boolean ?: false)
+                onScanned(text)
             }
 
             override fun possibleResultPoints(points: List<com.google.zxing.ResultPoint>) {}
@@ -64,30 +92,30 @@ class MainActivity : AppCompatActivity() {
             items.removeAt(pos)
             adapter.notifyItemRemoved(pos)
         }
-        binding.listItems.adapter = adapter
-        binding.listItems.setHasFixedSize(true)
+        listItems.layoutManager = LinearLayoutManager(this)
+        listItems.adapter = adapter
 
-        binding.btnPlus.setOnClickListener { bufQty++; updateBufferUi() }
-        binding.btnMinus.setOnClickListener { if (bufQty > 1) bufQty--; updateBufferUi() }
-        binding.btnQuery.setOnClickListener {
+        btnPlus.setOnClickListener { bufQty++; updateBufferUi() }
+        btnMinus.setOnClickListener { if (bufQty > 1) bufQty--; updateBufferUi() }
+        btnQuery.setOnClickListener {
             if (!bufUdi.isNullOrEmpty()) queryNmpa(bufUdi!!) else toast(R.string.toast_no_udi)
         }
-        binding.btnAdd.setOnClickListener { commitBuffer() }
-        binding.btnDiscard.setOnClickListener { clearBuffer() }
-        binding.btnExportJson.setOnClickListener { exportJson() }
-        binding.btnExportCsv.setOnClickListener { exportCsv() }
-        binding.btnClear.setOnClickListener { clearList() }
+        btnAdd.setOnClickListener { commitBuffer() }
+        btnDiscard.setOnClickListener { clearBuffer() }
+        btnExportJson.setOnClickListener { exportJson() }
+        btnExportCsv.setOnClickListener { exportCsv() }
+        btnClear.setOnClickListener { clearList() }
 
         updateBufferUi()
     }
 
     // ——— 扫码回调：合并到缓冲 ———
-    private fun onScanned(text: String, isGs1: Boolean) {
+    private fun onScanned(text: String) {
         if (!scannedRaws.add(text)) return   // 本次缓冲内重复，跳过（连续扫码同一帧）
 
-        val res = Gs1Parser.parse(text, isGs1)
+        // 让解析器按 FNC1/括号/数字 自动判定 GS1，无需依赖元数据标记
+        val res = Gs1Parser.parse(text)
         if (!res.isGs1) {
-            // 非 GS1 结构化：可能是纯序列号/厂内码——仅在缓冲为空时当作 (91) 序列号暂存
             if (bufUdi == null && bufBatch == null && bufExpiry == null && bufSerial == null) {
                 bufSerial = text
                 bufSerialAi = "91"
@@ -108,7 +136,6 @@ class MainActivity : AppCompatActivity() {
         }
         updateBufferUi()
 
-        // UDI 变化则自动查 NMPA
         if (!bufUdi.isNullOrEmpty() && bufUdi != queriedUdi) {
             queriedUdi = bufUdi
             queryNmpa(bufUdi!!)
@@ -122,15 +149,15 @@ class MainActivity : AppCompatActivity() {
         b.append("效期(17): ").append(Gs1Parser.formatDateYYMMDD(bufExpiry) ?: bufExpiry ?: "—").append("\n")
         b.append("生产(11): ").append(Gs1Parser.formatDateYYMMDD(bufProduction) ?: bufProduction ?: "—").append("    ")
         b.append("序列(${bufSerialAi ?: "?"}): ").append(bufSerial ?: "—")
-        binding.tvBuffer.text = b.toString()
-        binding.tvProduct.text = when (bufNmpaState) {
+        tvBuffer.text = b.toString()
+        tvProduct.text = when (bufNmpaState) {
             "ok" -> "✓ ${bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${bufProduct ?: ""}"
             "skip" -> "✗ NMPA 无记录"
             "err" -> "✗ 查询失败"
             else -> bufProduct ?: ""
         }
-        binding.tvQty.text = bufQty.toString()
+        tvQty.text = bufQty.toString()
     }
 
     private fun queryNmpa(udi: String) {
@@ -138,9 +165,18 @@ class MainActivity : AppCompatActivity() {
         updateBufferUi()
         toast(R.string.toast_querying)
         Thread {
-            val r = NmpaClient.query(udi)
+            // 1) 先查本地缓存（落过库的直接复用，不再联网）
+            val cached = NmpaCache.get(udi)
+            val r = if (cached != null) {
+                cached
+            } else {
+                // 2) 缓存未命中 → 联网查，成功后落库
+                val net = NmpaClient.query(udi)
+                if (net.state != "err") NmpaCache.put(udi, net)
+                net
+            }
             runOnUiThread {
-                if (bufUdi != udi) return@runOnUiThread  // 缓冲已变，丢弃旧结果
+                if (bufUdi != udi) return@runOnUiThread
                 bufNmpaState = r.state
                 bufProduct = r.productName
                 bufSpec = r.specification
@@ -175,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         )
         items.add(0, item)
         adapter.notifyItemInserted(0)
-        binding.listItems.scrollToPosition(0)
+        listItems.scrollToPosition(0)
         clearBuffer()
         if (item.udiDi.isNullOrEmpty()) toast(R.string.toast_no_udi)
     }
