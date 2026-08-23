@@ -148,11 +148,11 @@ class MainActivity : AppCompatActivity() {
         for (f in parsed.fields) {
             when (f.type) {
                 Gs1Parser.FieldType.UDI ->
-                    if (bufUdi == null) { bufUdi = f.value; bufRawUdi = f }
+                    if (bufUdi == null) bufUdi = f.value
                 Gs1Parser.FieldType.BATCH ->
                     if (bufBatch == null) bufBatch = f.value
                 Gs1Parser.FieldType.EXPIRY ->
-                    if (bufExpiry == null) { bufExpiry = f.value; bufRawExpiry = f }
+                    if (bufExpiry == null) bufExpiry = f.value
                 Gs1Parser.FieldType.PROD_DATE ->
                     if (bufProduction == null) bufProduction = f.value
                 Gs1Parser.FieldType.SERIAL ->
