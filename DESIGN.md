@@ -15,10 +15,11 @@
 | 扫码方案 | `zxing-android-embedded:4.3.0`（**AndroidX 版、不依赖 GMS**，普通机可用；2.3.0 依赖旧 Support Library 与 AGP 8 冲突）→ 已验证一次构建过 |
 | GS1 解析 | **自写 `Gs1Parser`**：参考 `Keaze/GS1ParserKt` 思路，但**补齐 (91) 序列号**，支持 HRI 括号化与 FNC1 分隔两种输入 |
 | NMPA 查询 | **自写 `NmpaClient`**：`HttpURLConnection` 直连后端，零依赖 |
-| **本地缓存** | **`NmpaCache`（SQLite）**：联网查到的 NMPA 结果落库，下次同 UDI 直接读库不再联网；解决重复扫码反复联网与无网复用。缓存不过期，可清空刷新 |
+| **本地缓存 + 覆盖字典** | **`NmpaCache`（SQLite）**：联网查到的 NMPA 结果落 `udi_cache` 表（不过期）；用户改名/查不到时手补的落 `udi_override` 表。**读取优先级 override > cache**，用户修正永远生效。「字典」入口可导出/导入 override JSON 做多设备同步 |
 | 导出格式 | **JSON + CSV 都给**（默认双出口），经系统分享面板（微信/留存） |
 | 与桌面衔接 | 导出 JSON/CSV → 桌面 `hospital-inventory-pipeline` 读取合并 |
-| 离线补查 | 缓存命中直接复用；无网/失败标 `err`，可用「查NMPA」按钮稍后重查 |
+| 离线补查 / 本地字典 | 缓存命中直接复用；override 命中标 `local`；NMPA 查不到可手动补「本地字典」条目，仍可被搜索/导出 |
+| 多设备同步 | **文件级 JSON 导入导出**（零服务器）：导出 `udi_overrides.json` 经微信/网盘传另一台「导入」即可；导入用事务批量写，不卡扫码 |
 
 ## 2. "两行条码"如何处理（用户最关心的点）
 - 现象：标签上 UDI 码和批号/效期码分成两行，或一图多码。
@@ -31,7 +32,7 @@
 
 ## 3. 技术栈与构建
 - Kotlin 2.0.21 + AGP 8.13.0 + Java 17 + compileSdk/targetSdk 36。
-- 依赖：`androidx.core/core-ktx`、`appcompat`、`material:1.12.0`、`recyclerview`、`cardview`、`zxing-android-embedded:2.3.0`。
+- 依赖：`androidx.core/core-ktx`、`appcompat`、`material:1.12.0`、`recyclerview`、`cardview`、`zxing-android-embedded:4.3.0`。
 - 出包：**本机/沙箱无法构建 APK**（到 `dl.google.com` 限速、制品主机被墙；且 git 智能 HTTP 协议流被沙箱截断，无法 `git push`），沿用已验证的 **GitHub Actions 云构建**：沙箱通过 **GitHub REST API（Git Data/Contents/Commit comments）** 推送源码 → 触发 CI → `ncipollo/release-action` 发 Release 上传 APK，标签 `debug-latest` 覆盖更新，得匿名公开直链。
 - 固定 debug 签名（复用同一把密钥），保证可覆盖安装。
 - 构建坑位已排雷：`viewBinding` 必须关掉改用 `findViewById`（否则 binding 类不生成导致编译失败）；`zxing-android-embedded` 必须用 AndroidX 版 4.x（2.3.0 的旧 Support Library 与 AGP 8 冲突）。
@@ -42,13 +43,13 @@ app/src/main/java/com/hospital/udiscan/
   MainActivity.kt   扫码/合并/自动查名/清单/导出 主界面（缓存优先）
   Gs1Parser.kt      GS1 AI 解析（含 (91)）
   NmpaClient.kt     NMPA 正向查询（三态）
-  NmpaCache.kt      SQLite 本地缓存（UDI→名称/规格/厂家/状态）
+  NmpaCache.kt      SQLite 本地缓存 + 覆盖字典（udi_cache / udi_override 两表，override 优先；导入导出 JSON 事务批量写）
   ScanItem.kt       一条记录数据类
-  ItemAdapter.kt    清单 RecyclerView 适配器
+  ItemAdapter.kt    清单 RecyclerView 适配器（含「编辑」「删除」）
 ```
 
 ## 5. 后续可扩展（v2+）
-- 导出后由桌面管线批量补查（已有 `hospital-inventory-pipeline`）。
+- 桌面管线可直接读取 override：`hospital-inventory-pipeline` 侧若需复用字典，可让 App 导出的 override JSON 一并喂入。
 - 多盒/多货位分组、扫码绑定货位（取景框实时叠加）。
 - 桌面管线的"UDI 反向查型号"能力若需移动端也可加。
-- 缓存「清空/刷新」UI 入口（目前 `NmpaCache.clearAll()` 已就绪，待加按钮）。
+- 缓存「清空/刷新」UI 入口（目前 `NmpaCache.clearAll()`/`clearOverrides()` 已就绪，「字典」弹窗可加清空按钮）。
