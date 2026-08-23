@@ -129,7 +129,6 @@ object Gs1Parser {
         val check = (10 - (sum % 10)) % 10
         return check == gtin.last().digitToInt()
     }
-    }
 
     private fun parseStructured(s: String, fnc1: Char): Gs1Result {
         val fields = mutableListOf<Field>()
