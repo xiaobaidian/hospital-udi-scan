@@ -1,0 +1,12 @@
+*.iml
+.gradle/
+local.properties
+keystore/*
+!keystore/debug.p12
+*.keystore
+build/
+app/build/
+app/release/
+app-debug.apk
+.DS_Store
+Thumbs.db
