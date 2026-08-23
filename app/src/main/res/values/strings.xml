@@ -8,6 +8,7 @@
     <string name="btn_export_csv">导出 CSV</string>
     <string name="btn_clear">清空清单</string>
     <string name="btn_dict">字典</string>
+    <string name="buffer_title">当前待录入</string>
     <string name="manage_title">管理</string>
     <string name="menu_export">导出清单</string>
     <string name="menu_export_sub">导出 JSON / CSV，触发系统分享</string>
