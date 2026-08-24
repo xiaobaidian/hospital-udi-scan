@@ -1,8 +1,10 @@
 package com.hospital.udiscan
 
 import android.content.Intent
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -12,7 +14,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.journeyapps.barcodescanner.BuildConfig
 
 /**
  * 清单页（ViewPager2 第 1 页）：展示已录入的扫码记录。

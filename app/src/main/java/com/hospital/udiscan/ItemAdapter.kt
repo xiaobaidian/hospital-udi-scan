@@ -45,11 +45,14 @@ class ItemAdapter(
         holder.tvState.text = txt
         holder.tvState.setTextColor(ContextCompat.getColor(holder.itemView.context, color))
         // 按 item.id 回调，避免删除中间项后位置错位（点第1条删第2条）。
+        // 注意：setOnClickListener 的 lambda 中 it 是 View，不是 item，故取 adapterPosition 再拿 item。
         holder.btnDel.setOnClickListener {
-            onDelete(it.id)
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) onDelete(items[pos].id)
         }
         holder.btnEdit.setOnClickListener {
-            onEdit(it.id)
+            val pos = holder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) onEdit(items[pos].id)
         }
     }
 
