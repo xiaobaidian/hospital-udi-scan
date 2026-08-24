@@ -32,10 +32,21 @@ jobs:
         run: |
           sed -i 's#mirrors.cloud.tencent.com/gradle/gradle-8.14.3-all.zip#services.gradle.org/distributions/gradle-8.14.3-all.zip#' gradle/wrapper/gradle-wrapper.properties
 
+      - name: Compute version (递增 versionCode)
+        id: ver
+        run: |
+          # 以仓库提交总数作为 versionCode（单调递增），保证每次覆盖安装版号变化
+          VC=$(git rev-list --count HEAD)
+          dateShort=$(date +%y)$(date +%m)$(date +%d)
+          VN="0.1.${VC}"
+          echo "versionCode=$VC" >> "$GITHUB_OUTPUT"
+          echo "versionName=$VN" >> "$GITHUB_OUTPUT"
+          echo "computed VC=$VC VN=$VN"
+
       - name: Build debug APK (capture log)
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon > /tmp/build.log 2>&1
+          ./gradlew assembleDebug --no-daemon -PversionCode=${{ steps.ver.outputs.versionCode }} -PversionName="${{ steps.ver.outputs.versionName }}" > /tmp/build.log 2>&1
 
       - name: Upload build log for diagnosis (commit comment)
         if: always()

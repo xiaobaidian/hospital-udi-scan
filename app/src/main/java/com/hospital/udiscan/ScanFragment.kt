@@ -44,8 +44,13 @@ class ScanFragment : Fragment() {
     private lateinit var btnQuery: Button
     private lateinit var btnAdd: Button
     private lateinit var btnDiscard: Button
+    private lateinit var btnEditName: Button
     private lateinit var scanFlash: TextView
-    private lateinit var previewChips: LinearLayout
+    private lateinit var tvLineUdi: TextView
+    private lateinit var tvLineBatch: TextView
+    private lateinit var tvLineExpiry: TextView
+    private lateinit var tvLineProd: TextView
+    private lateinit var tvLineSerial: TextView
     private lateinit var tvPreviewQty: TextView
     private lateinit var tvPreviewHint: TextView
 
@@ -83,8 +88,13 @@ class ScanFragment : Fragment() {
         btnQuery = view.findViewById(R.id.btn_query)
         btnAdd = view.findViewById(R.id.btn_add)
         btnDiscard = view.findViewById(R.id.btn_discard)
+        btnEditName = view.findViewById(R.id.btn_edit_name)
         scanFlash = view.findViewById(R.id.scan_flash)
-        previewChips = view.findViewById(R.id.preview_chips)
+        tvLineUdi = view.findViewById(R.id.tv_line_udi)
+        tvLineBatch = view.findViewById(R.id.tv_line_batch)
+        tvLineExpiry = view.findViewById(R.id.tv_line_expiry)
+        tvLineProd = view.findViewById(R.id.tv_line_prod)
+        tvLineSerial = view.findViewById(R.id.tv_line_serial)
         tvPreviewQty = view.findViewById(R.id.tv_preview_qty)
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
 
@@ -133,7 +143,7 @@ class ScanFragment : Fragment() {
             toast(R.string.toast_discarded)
         }
 
-        tvProduct.setOnClickListener {
+        btnEditName.setOnClickListener {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) editCurrentProduct(udi)
         }
@@ -261,68 +271,40 @@ class ScanFragment : Fragment() {
             tvProductTop.visibility = View.VISIBLE
             tvProductTop.text = topText
         }
-        // 缓冲卡内的 tvProduct 改为轻量「点此修改」提示
-        tvProduct.text = if (vm.bufNmpaState == "ok" || vm.bufNmpaState == "local") "点此改名/改型号" else ""
+        // 缓冲卡内的 tvProduct 仅作占位，改名入口已挪到右上按钮
+        tvProduct.text = ""
         tvQty.text = vm.bufQty.toString()
         updatePreviewCard()
     }
 
-    /** 更新「本次将录入」预览卡。 */
+    /** 更新「本次将录入」预览卡（紧凑分行展示）。 */
     private fun updatePreviewCard() {
-        previewChips.removeAllViews()
-        val chips = mutableListOf<Pair<String, String?>>()
-        chips.add(getString(R.string.chip_udi) to vm.bufUdi)
-        chips.add(getString(R.string.chip_batch) to vm.bufBatch)
-        chips.add(getString(R.string.chip_expiry) to (Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry))
-        chips.add(getString(R.string.chip_prod) to (Gs1Parser.formatDateYYMMDD(vm.bufProduction) ?: vm.bufProduction))
-        chips.add(getString(R.string.chip_serial) to vm.bufSerial)
+        // 来源标记：自动分辨条码/二维码
+        val src = if (vm.bufSource == "qr") "📷 二维码" else "▌ 条码"
+        tvLineUdi.text = "UDI(01)：${vm.bufUdi ?: "—"}"
+        tvLineBatch.text = "批号(10)：${vm.bufBatch ?: "—"}"
 
-        var anyFilled = false
-        for ((label, value) in chips) {
-            if (value.isNullOrEmpty()) continue
-            anyFilled = true
-            val chip = TextView(requireContext()).apply {
-                text = "$label: $value"
-                setPadding(12, 6, 12, 6)
-                textSize = 13f
-                setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
-                background = ContextCompat.getDrawable(requireContext(), android.R.color.holo_blue_dark)
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                lp.setMargins(0, 0, 8, 8)
-                layoutParams = lp
-            }
-            previewChips.addView(chip)
+        val exp = Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry
+        tvLineExpiry.text = "效期(17)：${exp ?: "—"}"
+        val prod = Gs1Parser.formatDateYYMMDD(vm.bufProduction) ?: vm.bufProduction
+        tvLineProd.text = "生产(11)：${prod ?: "—"}"
+
+        val serialAi = vm.bufSerialAi ?: "21"
+        if (vm.bufSerial.isNullOrEmpty()) {
+            tvLineSerial.visibility = View.GONE
+        } else {
+            tvLineSerial.visibility = View.VISIBLE
+            tvLineSerial.text = "序列($serialAi)：${vm.bufSerial}"
         }
-        previewChips.visibility = if (anyFilled) View.VISIBLE else View.GONE
 
-        tvPreviewQty.text = getString(R.string.preview_qty, vm.bufQty)
+        tvPreviewQty.text = "$src · " + getString(R.string.preview_qty, vm.bufQty)
 
         if (vm.bufPendingUnknown.isNotEmpty()) {
-            for (vv in vm.bufPendingUnknown) {
-                val chip = TextView(requireContext()).apply {
-                    text = "${getString(R.string.chip_unknown)}: $vv"
-                    setPadding(12, 6, 12, 6)
-                    textSize = 13f
-                    setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
-                    background = ContextCompat.getDrawable(requireContext(), android.R.color.holo_orange_dark)
-                    val lp = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                    lp.setMargins(0, 0, 8, 8)
-                    layoutParams = lp
-                    setOnClickListener { assignUnknown(vv) }
-                }
-                previewChips.addView(chip)
-            }
             tvPreviewHint.text = getString(R.string.preview_hint_pending, vm.bufPendingUnknown.joinToString(" / "))
             tvPreviewHint.visibility = View.VISIBLE
         } else {
             tvPreviewHint.text = getString(R.string.preview_hint_empty)
-            tvPreviewHint.visibility = if (anyFilled) View.GONE else View.VISIBLE
+            tvPreviewHint.visibility = View.VISIBLE
         }
     }
 

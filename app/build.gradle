@@ -9,8 +9,11 @@ android {
         applicationId 'com.hospital.udiscan'
         minSdk 24
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0'
+        // 本地未注入时给默认值；CI 会通过 -P 注入递增后的版本号
+        def vc = (project.findProperty('versionCode') ?: '1').toString().toInteger()
+        def vn = project.findProperty('versionName') ?: '0.1.0'
+        versionCode vc
+        versionName vn.toString()
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

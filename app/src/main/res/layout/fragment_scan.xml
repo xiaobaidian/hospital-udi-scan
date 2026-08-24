@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
 
     <!-- 扫码取景 -->
     <FrameLayout
@@ -84,14 +85,14 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
-    <!-- 「本次将录入」实时预览卡（更醒目，独立于缓冲卡上方） -->
+    <!-- 「本次将录入」实时预览卡（紧凑，字段分行） -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginTop="4dp"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="10dp"
         app:cardBackgroundColor="#E3F2FD"
         app:cardElevation="4dp"
         app:strokeColor="@color/primary"
@@ -101,31 +102,97 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/preview_title"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:textColor="@color/primary_dark" />
-
-            <!-- 四个核心字段 chip 行（动态填充） -->
+            <!-- 标题行：左标题 + 右侧「改名」按钮 -->
             <LinearLayout
-                android:id="@+id/preview_chips"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/preview_title"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:textColor="@color/primary_dark" />
+
+                <Button
+                    android:id="@+id/btn_edit_name"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:minWidth="0dp"
+                    android:minHeight="32dp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="0dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="改名/改型号" />
+            </LinearLayout>
+
+            <!-- UDI 一行 -->
+            <TextView
+                android:id="@+id/tv_line_udi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_main" />
+
+            <!-- 批号 一行 -->
+            <TextView
+                android:id="@+id/tv_line_batch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_main" />
+
+            <!-- 效期 + 生产 并列一行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
+
+                <TextView
+                    android:id="@+id/tv_line_expiry"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_main" />
+
+                <TextView
+                    android:id="@+id/tv_line_prod"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:textSize="14sp"
+                    android:textColor="@color/text_main" />
+            </LinearLayout>
+
+            <!-- 序列号 一行（空则隐藏） -->
+            <TextView
+                android:id="@+id/tv_line_serial"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_main"
                 android:visibility="gone" />
 
-            <!-- 数量行 -->
+            <!-- 数量 -->
             <TextView
                 android:id="@+id/tv_preview_qty"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="4dp"
                 android:textColor="@color/text_main"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -177,15 +244,6 @@
                 android:textColor="@color/text_main"
                 android:textSize="13sp"
                 android:fontFamily="monospace" />
-
-            <TextView
-                android:id="@+id/tv_product"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/primary"
-                android:textStyle="bold"
-                android:textSize="14sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
