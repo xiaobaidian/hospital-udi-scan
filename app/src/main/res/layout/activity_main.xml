@@ -43,6 +43,33 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!-- 取景框引导层：四角 + 中心框 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/scan_frame" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -66,6 +93,63 @@
             android:textStyle="bold"
             android:visibility="gone" />
     </FrameLayout>
+
+    <!-- 「本次将录入」实时预览卡（更醒目，独立于缓冲卡上方） -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="#E3F2FD"
+        app:cardElevation="4dp"
+        app:strokeColor="@color/primary"
+        app:strokeWidth="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/preview_title"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="@color/primary_dark" />
+
+            <!-- 四个核心字段 chip 行（动态填充） -->
+            <LinearLayout
+                android:id="@+id/preview_chips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
+                android:visibility="gone" />
+
+            <!-- 数量行 -->
+            <TextView
+                android:id="@+id/tv_preview_qty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/text_main"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <!-- 未识别/待确认提示 -->
+            <TextView
+                android:id="@+id/tv_preview_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_sub"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
     <!-- 当前缓冲（待录入）—— 语义卡片 -->
     <androidx.cardview.widget.CardView

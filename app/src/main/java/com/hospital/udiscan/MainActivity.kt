@@ -5,10 +5,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -42,6 +48,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnDiscard: Button
     private lateinit var btnManage: Button
     private lateinit var scanFlash: android.widget.TextView
+    // 预览卡
+    private lateinit var previewChips: LinearLayout
+    private lateinit var tvPreviewQty: TextView
+    private lateinit var tvPreviewHint: TextView
 
     private lateinit var adapter: ItemAdapter
 
@@ -65,7 +75,14 @@ class MainActivity : AppCompatActivity() {
     private var bufPendingUnknown: List<String> = emptyList()
 
     // —— 扫码闪光反馈 ——
-    private var feedbackTimer: android.os.Handler? = null
+    private var feedbackTimer: Handler? = null
+
+    // —— 去抖：800ms 内同串不重复处理；跨缓冲已入库 UDI 去重 ——
+    private var lastBeepTime: Long = 0
+    private var lastRawHandled: String? = null
+
+    // —— 震动 ——
+    private var vibrator: Vibrator? = null
 
     private val camPerm = Manifest.permission.CAMERA
     private val rcCam = 1001
@@ -74,6 +91,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         NmpaCache.init(this)
+        vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
 
         scanner = findViewById(R.id.barcode_scanner)
         tvBuffer = findViewById(R.id.tv_buffer)
@@ -87,6 +105,9 @@ class MainActivity : AppCompatActivity() {
         btnDiscard = findViewById(R.id.btn_discard)
         btnManage = findViewById(R.id.btn_manage)
         scanFlash = findViewById(R.id.scan_flash)
+        previewChips = findViewById(R.id.preview_chips)
+        tvPreviewQty = findViewById(R.id.tv_preview_qty)
+        tvPreviewHint = findViewById(R.id.tv_preview_hint)
 
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
@@ -118,7 +139,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ManageActivity::class.java))
         }
 
-        // 长按缓冲「产品」区 → 直接编辑当前 UDI 字典
         tvProduct.setOnClickListener {
             if (!bufUdi.isNullOrEmpty()) editCurrentProduct()
         }
@@ -128,15 +148,28 @@ class MainActivity : AppCompatActivity() {
 
     // ——— 扫码回调：按字段「语义类型」合并到缓冲（而非按出现顺序填坑）———
     private fun onScanned(text: String) {
+        // 去抖：800ms 内同串不重复处理
+        val now = System.currentTimeMillis()
+        if (text == lastRawHandled && now - lastBeepTime < 800) return
         if (!scannedRaws.add(text)) return   // 本次缓冲内重复，跳过（连续扫码同一帧）
+        lastRawHandled = text
+        lastBeepTime = now
 
         val parsed = Gs1Parser.parse(text, alreadyHasUdi = bufUdi != null)
         if (parsed.fields.isEmpty()) {
-            // 连纯文本都不是：当作未知，提示用户
             flashScanFeedback("无法识别", false)
             return
         }
-        beep()  // 识别到有效字段即「滴」一声
+        beep()  // 识别到有效字段即「滴」一声 + 震动
+
+        // UDI 冲突检测：已缓冲 UDI 与新扫到 UDI 不同 → 开新条目
+        val newUdi = parsed.fields.firstOrNull { it.type == Gs1Parser.FieldType.UDI }?.value
+        if (newUdi != null && bufUdi != null && newUdi != bufUdi) {
+            // 冲突：先把当前缓冲提交，再开启新条目
+            commitBuffer()
+            flashScanFeedback("检测到新 UDI，已开新条目", true)
+            toast(R.string.toast_udi_conflict)
+        }
 
         // 按类型合并：每类只取第一个尚未填的，避免重复覆盖用户已确认的值
         for (f in parsed.fields) {
@@ -196,7 +229,7 @@ class MainActivity : AppCompatActivity() {
             b.append("\n⚠ 待确认：").append(bufPendingUnknown.joinToString(" / "))
         }
         tvBuffer.text = b.toString()
-        tvProduct.text = when (  bufNmpaState) {
+        tvProduct.text = when (bufNmpaState) {
             "ok" -> "✓ ${bufProduct ?: ""}"
             "local" -> "✎本地字典：${bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${bufProduct ?: ""}"
@@ -206,6 +239,95 @@ class MainActivity : AppCompatActivity() {
             else -> bufProduct ?: ""
         }
         tvQty.text = bufQty.toString()
+        updatePreviewCard()
+    }
+
+    /** 更新「本次将录入」预览卡：四个核心字段 chip + 数量 + 待确认提示。 */
+    private fun updatePreviewCard() {
+        previewChips.removeAllViews()
+        val chips = mutableListOf<Pair<String, String?>>()
+        chips.add(getString(R.string.chip_udi) to bufUdi)
+        chips.add(getString(R.string.chip_batch) to bufBatch)
+        chips.add(getString(R.string.chip_expiry) to (Gs1Parser.formatDateYYMMDD(bufExpiry) ?: bufExpiry))
+        chips.add(getString(R.string.chip_prod) to (Gs1Parser.formatDateYYMMDD(bufProduction) ?: bufProduction))
+        chips.add(getString(R.string.chip_serial) to bufSerial)
+
+        var anyFilled = false
+        for ((label, value) in chips) {
+            if (value.isNullOrEmpty()) continue
+            anyFilled = true
+            val chip = TextView(this).apply {
+                text = "$label: $value"
+                setPadding(12, 6, 12, 6)
+                textSize = 13f
+                setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
+                background = ContextCompat.getDrawable(this@MainActivity, android.R.color.holo_blue_dark)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.setMargins(0, 0, 8, 8)
+                layoutParams = lp
+            }
+            previewChips.addView(chip)
+        }
+        previewChips.visibility = if (anyFilled) android.view.View.VISIBLE else android.view.View.GONE
+
+        tvPreviewQty.text = getString(R.string.preview_qty, bufQty)
+
+        // 待确认 / 未知段提示（可点击手动指定）
+        if (bufPendingUnknown.isNotEmpty()) {
+            for (val in bufPendingUnknown) {
+                val chip = TextView(this).apply {
+                    text = "${getString(R.string.chip_unknown)}: $val"
+                    setPadding(12, 6, 12, 6)
+                    textSize = 13f
+                    setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
+                    background = ContextCompat.getDrawable(this@MainActivity, android.R.color.holo_orange_dark)
+                    val lp = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    lp.setMargins(0, 0, 8, 8)
+                    layoutParams = lp
+                    setOnClickListener { assignUnknown(val) }
+                }
+                previewChips.addView(chip)
+            }
+            tvPreviewHint.text = getString(R.string.preview_hint_pending, bufPendingUnknown.joinToString(" / "))
+            tvPreviewHint.visibility = android.view.View.VISIBLE
+        } else {
+            tvPreviewHint.text = getString(R.string.preview_hint_empty)
+            tvPreviewHint.visibility = if (anyFilled) android.view.View.GONE else android.view.View.VISIBLE
+        }
+    }
+
+    /** 对待确认段手动指定字段类型（点 chip 触发）。 */
+    private fun assignUnknown(value: String) {
+        val options = arrayOf(
+            getString(R.string.assign_udi),
+            getString(R.string.assign_batch),
+            getString(R.string.assign_expiry),
+            getString(R.string.assign_prod),
+            getString(R.string.assign_serial)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.dialog_assign_title))
+            .setMessage("原始内容：$value")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> if (bufUdi == null) bufUdi = value
+                    1 -> if (bufBatch == null) bufBatch = value
+                    2 -> if (bufExpiry == null) bufExpiry = value
+                    3 -> if (bufProduction == null) bufProduction = value
+                    4 -> if (bufSerial == null) { bufSerial = value; bufSerialAi = "21" }
+                }
+                // 从待确认列表移除该值
+                bufPendingUnknown = bufPendingUnknown.filter { it != value }
+                updateBufferUi()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun appendField(b: StringBuilder, label: String, value: String?, strong: Boolean = false) {
@@ -223,20 +345,32 @@ class MainActivity : AppCompatActivity() {
             )
             flash.alpha = 1f
             feedbackTimer?.removeCallbacksAndMessages(null)
-            feedbackTimer = android.os.Handler(android.os.Looper.getMainLooper()).apply {
+            feedbackTimer = Handler(Looper.getMainLooper()).apply {
                 postDelayed({ flash.visibility = android.view.View.GONE }, 1400)
             }
         }
     }
 
-    /** 扫码成功（识别到有效字段）时播放系统提示音，零依赖、无需额外素材。 */
+    /** 扫码成功（识别到有效字段）时播放系统提示音 + 震动，零依赖、无需额外素材。 */
     private fun beep() {
         try {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-            val ringtone = RingtoneManager.getRingtone(this, uri)
-            ringtone.play()
+            RingtoneManager.getRingtone(this, uri)?.play()
         } catch (e: Exception) {
             // 个别机型无声也不影响扫码流程
+        }
+        // 震动反馈（短震 30ms）
+        try {
+            vibrator?.let { v ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    v.vibrate(30)
+                }
+            }
+        } catch (e: Exception) {
+            // 震动不可用不影响主流程
         }
     }
 
@@ -245,12 +379,10 @@ class MainActivity : AppCompatActivity() {
         updateBufferUi()
         toast(R.string.toast_querying)
         Thread {
-            // 1) 本地合并读取：override（手改/手补）优先，其次官方缓存
             val (local, fromOverride) = NmpaCache.getMerged(udi)
             val r = if (local != null) {
                 if (fromOverride) local.copy(state = "local") else local
             } else {
-                // 2) 本地均无 → 联网查 NMPA，成功后落官方缓存
                 val net = NmpaClient.query(udi)
                 if (net.state != "err") NmpaCache.put(udi, net)
                 net
@@ -320,9 +452,6 @@ class MainActivity : AppCompatActivity() {
         showEditDialog(udi, existing?.productName ?: it.productName,
                 existing?.specification ?: it.specification,
                 existing?.companyName ?: it.companyName)
-        // 对话框保存后，就地同步到该条目（保证导出也是修正后的值）
-        // 注意：showEditDialog 内部已写 DB；这里在返回后直接按需刷新展示字段
-        // 为避免重复弹窗逻辑，采用“同意保存后”通过一次轻量重查覆盖：
         Thread {
             val merged = NmpaCache.getMerged(udi).first
             runOnUiThread {
@@ -348,7 +477,6 @@ class MainActivity : AppCompatActivity() {
     // ——— 编辑当前缓冲产品（写入 override）———
     private fun editCurrentProduct() {
         val udi = bufUdi ?: run { toast(R.string.toast_no_udi); return }
-        // 先读已有覆盖值作默认值
         val existing = NmpaCache.getOverride(udi)
                 ?: NmpaCache.get(udi)
         showEditDialog(udi, existing?.productName, existing?.specification, existing?.companyName)
@@ -356,7 +484,6 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * 编辑对话框：改名/规格/厂家，写入 udi_override。
-     * 不论该 UDI 之前是官方查回还是查不到，都会被用户覆盖生效（override 优先）。
      */
     private fun showEditDialog(udi: String, defName: String?, defSpec: String?, defCompany: String?) {
         val ctx = this
@@ -376,7 +503,6 @@ class MainActivity : AppCompatActivity() {
                 val spec = etSpec.text.toString().trim().let { if (it.isEmpty()) null else it }
                 val company = etCompany.text.toString().trim().let { if (it.isEmpty()) null else it }
                 NmpaCache.putOverride(udi, name, spec, company)
-                // 同步刷新缓冲展示
                 if (bufUdi == udi) {
                     bufProduct = name ?: bufProduct
                     bufSpec = spec ?: bufSpec

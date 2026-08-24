@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UDI 扫码盘点 - 方案B 原型</title>
+<style>
+  :root{
+    --primary:#1565C0; --primary-dark:#0D47A1; --accent:#FF6F00;
+    --bg:#F5F6F8; --card:#FFFFFF; --ok:#2E7D32; --pending:#EF6C00; --skip:#C62828;
+    --text-main:#212121; --text-sub:#757575;
+    --radius-lg:12px; --radius-md:8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#E9EBEF; color:var(--text-main); padding:24px;
+    display:flex; gap:28px; flex-wrap:wrap; justify-content:center;
+  }
+  .phone{
+    width:360px; background:var(--bg); border-radius:28px; overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,.18); border:1px solid #d4d7dd; align-self:flex-start;
+  }
+  .topbar{
+    background:var(--primary-dark); color:#fff; padding:12px 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .topbar .title{font-size:17px; font-weight:600; flex:1;}
+  .topbar .manage{
+    background:rgba( 255,255,255,.16); color:#fff; border:none; border-radius:8px;
+    padding:6px 12px; font-size:12px; cursor:pointer;
+  }
+  .scanner{ position:relative; height:200px; background:#111; display:flex; align-items:center; justify-content:center;}
+  .scanner .frame{ width:190px; height:110px; border:2px solid #fff; border-radius:8px; box-shadow:0 0 0 400px rgba(0,0,0,.35);}
+  .scanner .hint{ position:absolute; bottom:0; left:0; right:0; text-align:center; background:rgba(0,0,0,.55); color:#fff; padding:8px; font-size:13px;}
+  .flash{ position:absolute; top:0; left:0; right:0; text-align:center; padding:10px; font-weight:600; font-size:14px; color:#fff; display:none;}
+  .flash.show{display:block; animation:fade 1.4s ease;}
+  @keyframes fade{0%{opacity:0; transform:translateY(-6px);}15%{opacity:1;}80%{opacity:1;}100%{opacity:0;}}
+  .buffer{ background:var(--card); margin:10px; border-radius:var(--radius-lg); padding:14px; border:1px solid #e3e6ea;}
+  .buffer h3{font-size:15px; font-weight:600; margin-bottom:10px;}
+  .field-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .chip{ border-radius:8px; padding:6px 10px; font-size:13px; line-height:1.4; border:1px solid #e0e0e0; background:#F5F6F8;}
+  .chip b{display:block; font-size:11px; color:var(--text-sub); font-weight:500; margin-bottom: 2px;}
+  .chip.udi{background:#E6F1FB; border-color:#85B7EB;}
+  .chip.batch{background:#EAF3DE; border-color:#97C459;}
+  .chip.expiry{background:#FAEEDA; border-color:#FAC775;}
+  .chip.serial{background:#F3EAF7; border-color:#CECBF6;}
+  .product{font-size:15px; font-weight:600; color:var(--primary); margin-bottom:12px;}
+  .product.ok{color:var(--ok);} .product.pending{color:var(--pending);} .product.skip{color:var(--skip);}
+  .qty{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+  .qty button{width:40px; height:40px; border-radius:8px; border:1px solid #cfd3d9; background:#fff; font-size:18px; cursor:pointer;}
+  .qty .num{width:48px; text-align:center; font-size:18px; font-weight:600;}
+  .actions{display:flex; gap:8px;}
+  .actions button{flex:1; padding:10px; border-radius:8px; font-size:13px; cursor:pointer; border:none;}
+  .btn-tonal{background:#E6F1FB; color:var(--primary);}
+  .btn-primary{background:var(--primary); color:#fff;}
+  .btn-discard{background:#F1EFE8; color:var(--text-main);}
+  .list{padding:0 10px 16px;}
+  .list-title{font-size:13px; color:var(--text-sub); padding:4px 4px 8px;}
+  .item{background:var(--card); border-radius:10px; padding:12px; margin-bottom:8px; border:1px solid #e3e6ea;}
+  .item .row1{display:flex; align-items:center; gap:8px;}
+  .item .name{font-size:15px; font-weight:600; flex:1;}
+  .item .state{font-size:11px; padding:3px 7px; border-radius:6px; color:#fff;}
+  .item .edit,.item .del{border:1px solid #cfd3d9; background:#fff; border-radius:8px; cursor:pointer;}
+  .item .edit{font-size:12px; padding:4px 10px;}
+  .item .del{width:32px; height:32px; font-size:14px;}
+  .item .detail{font-size:12px; color:var(--text-sub); margin-top:6px;}
+  .item .meta{font-size:12px; color:var(--text-sub); margin-top:2px;}
+  /* 管理页 */
+  .page-head{background:var(--primary-dark); color:#fff; padding:14px 12px; font-size:16px; font-weight:600; display:flex; align-items:center;}
+  .page-head .back{background:rgba(255,255,255,.16); border:none; color:#fff; border-radius:8px; padding:6px 10px; margin-right:8px; cursor:pointer; font-size:12px;}
+  .menu{ padding:12px; }
+  .menu-card{ background:var(--card); border-radius:var(--radius-lg); border:1px solid #e3e6ea; overflow:hidden; }
+  .menu-item{ display:flex; align-items:center; gap:12px; padding:16px; border-bottom:1px solid #eee; cursor:pointer; }
+  .menu-item:last-child{border-bottom:none;}
+  .menu-item .ic{ width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px;}
+  .menu-item .t{font-size:15px; font-weight:500;}
+  .menu-item .d{font-size:12px; color:var(--text-sub); margin-top:2px;}
+  .menu-item .arrow{margin-left:auto; color:var(--text-sub); font-size:18px;}
+  .note{width:320px; background:#fff; border:1px solid #e3e6ea; border-radius:var(--radius-lg); padding:16px; align-self:flex-start;}
+  .note h2{font-size:15px; margin-bottom:8px;}
+  .note p{font-size:13px; color:var(--text-sub); line-height:1.7; margin-bottom:6px;}
+  .note ul{font-size:13px; color:var(--text-sub); padding-left:18px; line-height:1.7;}
+</style>
+</head>
+<body>
+
+<!-- 主界面 -->
+<div class="phone">
+  <div class="topbar">
+    <span class="title">UDI 扫码盘点</span>
+    <button class="manage" onclick="alert('前往管理页（原型）')">管理</button>
+  </div>
+  <div class="scanner">
+    <div class="frame"></div>
+    <div class="flash" id="flash"></div>
+    <div class="hint">将条码放入取景框，支持一图多码 / 多帧累积</div>
+  </div>
+  <div class="buffer">
+    <h3>当前待录入</h3>
+    <div class="field-row">
+      <div class="chip udi"><b>UDI (01)</b><span>06991234000011</span></div>
+      <div class="chip batch"><b>批号 (10)</b><span>240815</span></div>
+      <div class="chip expiry"><b>效期 (17)</b><span>2026-08-15</span></div>
+      <div class="chip serial"><b>序列 (21)</b><span>SN005</span></div>
+    </div>
+    <div class="product ok">一次性使用无菌注射器 带针</div>
+    <div class="qty">
+      <span>数量：</span>
+      <button>−</button><span class="num">1</span><button>+</button>
+    </div>
+    <div class="actions">
+      <button class="btn-tonal">查 NMPA</button>
+      <button class="btn-primary">加入清单</button>
+      <button class="btn-discard">丢弃</button>
+    </div>
+  </div>
+  <div class="list">
+    <div class="list-title">已录入清单（2）</div>
+    <div class="item">
+      <div class="row1"><span class="name">一次性使用无菌注射器 带针</span>
+        <span class="state" style="background:#2E7D32">已查</span>
+        <button class="edit">编辑</button><button class="del">×</button></div>
+      <div class="detail">UDI: 06991234000011 · 批号: 240815 · 效期: 2026-08-15 · 数量: 3</div>
+      <div class="meta">2026-08-24 00:18</div>
+    </div>
+    <div class="item">
+      <div class="row1"><span class="name">医用外科口罩</span>
+        <span class="state" style="background:#EF6C00">待核对</span>
+        <button class="edit">编辑</button><button class="del">×</button></div>
+      <div class="detail">UDI: 06991234000022 · 批号: — · 效期: — · 数量: 1</
+div>
+      <div class="meta">2026-08-24 00:19</div>
+    </div>
+  </div>
+</div>
+
+<!-- 管理页 -->
+<div class="phone">
+  <div class="page-head"><button class="back" onclick="alert('返回首页')">‹ 返回</button>管理</div>
+  <div class="menu">
+    <div class="menu-card">
+      <div class="menu-item">
+        <div class="ic" style="background:#1565C0">⤓</div>
+        <div><div class="t">导出清单</div><div class="d">导出 JSON / CSV，触发系统分享</div></div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="ic" style="background:#3B6D11">⤒</div>
+        <div><div class="t">导入覆盖字典</div><div class="d">从文件批量导入 UDI 手改记录</div></div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="ic" style="background:#7F77DD">◰</div>
+        <div><div class="t">UDI 字典</div><div class="d">查看手改条目，可编辑 / 清空</div></div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="menu-item">
+        <div class="ic" style="background:#C62828">⌫</div>
+        <div><div class="t">清空清单</div><div class="d">移除本次已录入的全部条目</div></div>
+        <div class="arrow">›</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <h2>方案 B（二级「管理」页）</h2>
+  <p>主界面只保留：扫描、缓冲、清单。所有「非核心」操作收进右上角「管理」二级页，首屏更聚焦扫码。</p>
+  <ul>
+    <li><b>主界面</b>：顶栏仅标题 + 「管理」入口；去掉原有四个按钮。</li>
+    <li><b>管理页</b>：导出清单（JSON/CSV 系统分享）、导入覆盖字典、UDI 字典查看/清空、清空清单。</li>
+    <li>导出/导入仍是本地文件 + 系统分享，不接云。</li>
+  </ul>
+  <p style="margin-top:8px;">确认后我据此拆分主界面与新建 ManageActivity，再出包。</p>
+</div>
+
+</body>
+</html>
