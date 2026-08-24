@@ -37,6 +37,8 @@ class ScanFragment : Fragment() {
     private lateinit var scanner: DecoratedBarcodeView
     private lateinit var tvProductTop: TextView
     private lateinit var etQty: android.widget.EditText
+    private lateinit var btnQtyMinus: Button
+    private lateinit var btnQtyPlus: Button
     private lateinit var btnQuery: Button
     private lateinit var btnAdd: Button
     private lateinit var btnDiscard: Button
@@ -76,6 +78,8 @@ class ScanFragment : Fragment() {
         scanner = view.findViewById(R.id.barcode_scanner)
         tvProductTop = view.findViewById(R.id.tv_product_top)
         etQty = view.findViewById(R.id.et_qty)
+        btnQtyMinus = view.findViewById(R.id.btn_qty_minus)
+        btnQtyPlus = view.findViewById(R.id.btn_qty_plus)
         btnQuery = view.findViewById(R.id.btn_query)
         btnAdd = view.findViewById(R.id.btn_add)
         btnDiscard = view.findViewById(R.id.btn_discard)
@@ -130,6 +134,17 @@ class ScanFragment : Fragment() {
                 if (v != null && v >= 1) vm.bufQty = v
             }
         })
+
+        // 数量步进：减号 / 加号
+        fun stepQty(delta: Int) {
+            val cur = etQty.text.toString().toIntOrNull() ?: vm.bufQty
+            val next = (cur + delta).coerceAtLeast(1)
+            vm.bufQty = next
+            etQty.setText(next.toString())
+            etQty.setSelection(etQty.text.length)
+        }
+        btnQtyMinus.setOnClickListener { stepQty(-1) }
+        btnQtyPlus.setOnClickListener { stepQty(1) }
         btnQuery.setOnClickListener {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) queryNmpa(udi) else toast(R.string.toast_no_udi)
