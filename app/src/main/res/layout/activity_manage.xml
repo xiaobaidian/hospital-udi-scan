@@ -335,6 +335,124 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- 字典清空 -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/card"
+                app:cardElevation="1dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/menu_clear_nmpa"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="#1565C0"
+                            android:textColor="#fff"
+                            android:gravity="center"
+                            android:textSize="16sp"
+                            android:text="⌫" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/menu_clear_nmpa"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_main" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/menu_clear_nmpa_sub"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_sub" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:textSize="18sp"
+                            android:textColor="@color/text_sub" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="0.5dp"
+                        android:background="#e3e6ea" />
+
+                    <LinearLayout
+                        android:id="@+id/menu_clear_custom"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="#7F77DD"
+                            android:textColor="#fff"
+                            android:gravity="center"
+                            android:textSize="16sp"
+                            android:text="⌫" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/menu_clear_custom"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_main" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/menu_clear_custom_sub"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_sub" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="›"
+                            android:textSize="18sp"
+                            android:textColor="@color/text_sub" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- 查看 / 编辑字典 -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"

@@ -50,6 +50,8 @@ class ScanFragment : Fragment() {
     private lateinit var tvLineProd: TextView
     private lateinit var tvLineSerial: TextView
     private lateinit var tvPreviewHint: TextView
+    private lateinit var cardRawDump: android.view.View
+    private lateinit var tvRawDump: TextView
 
     // —— 扫码闪光反馈 ——
     private var feedbackTimer: Handler? = null
@@ -91,6 +93,8 @@ class ScanFragment : Fragment() {
         tvLineProd = view.findViewById(R.id.tv_line_prod)
         tvLineSerial = view.findViewById(R.id.tv_line_serial)
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
+        cardRawDump = view.findViewById(R.id.card_raw_dump)
+        tvRawDump = view.findViewById(R.id.tv_raw_dump)
 
         // —— 解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
         // 显式启用全部一维码格式（DefaultDecoderFactory 内部自带 TRY_HARDER，
@@ -275,6 +279,16 @@ class ScanFragment : Fragment() {
 
     /** 更新「本次将录入」预览卡（紧凑分行展示）。 */
     private fun updatePreviewCard() {
+        // 解析前拼接的原始扫码串卡片：扫码前隐藏，扫到码再展示；按 UDI 优先排序
+        val dump = vm.rawDumpSorted()
+        if (dump.isEmpty()) {
+            cardRawDump.visibility = View.GONE
+        } else {
+            cardRawDump.visibility = View.VISIBLE
+            tvRawDump.text = dump.joinToString("\n") { (raw, hasUdi) ->
+                if (hasUdi) "★ $raw" else "· $raw"
+            }
+        }
         // 「自定义字典」按钮：仅扫到 UDI 才展示（粉色底白字）
         btnEditName.visibility = if (vm.bufUdi.isNullOrEmpty()) View.GONE else View.VISIBLE
         // 来源标记：自动分辨条码/二维码

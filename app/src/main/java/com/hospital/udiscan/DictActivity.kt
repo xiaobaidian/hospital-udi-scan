@@ -18,6 +18,7 @@ class DictActivity : AppCompatActivity() {
 
     private lateinit var tabNmpa: Button
     private lateinit var tabCustom: Button
+    private lateinit var btnAddCustom: Button
     private lateinit var tvSummary: TextView
     private lateinit var listContainer: LinearLayout
     private var currentTab: String = "nmpa"
@@ -28,12 +29,14 @@ class DictActivity : AppCompatActivity() {
 
         tabNmpa = findViewById(R.id.tab_nmpa)
         tabCustom = findViewById(R.id.tab_custom)
+        btnAddCustom = findViewById(R.id.btn_add_custom)
         tvSummary = findViewById(R.id.tv_summary)
         listContainer = findViewById(R.id.list_container)
 
         findViewById<Button>(R.id.btn_back).setOnClickListener { finish() }
         tabNmpa.setOnClickListener { switchTab("nmpa") }
         tabCustom.setOnClickListener { switchTab("custom") }
+        btnAddCustom.setOnClickListener { addCustomEntry() }
 
         switchTab("nmpa")
     }
@@ -46,6 +49,8 @@ class DictActivity : AppCompatActivity() {
         tabNmpa.setTextColor(if (tab == "nmpa") off else on)
         tabCustom.setBackgroundColor(if (tab == "custom") on else off)
         tabCustom.setTextColor(if (tab == "custom") off else on)
+        // 仅自定义字典页显示「新增」入口
+        btnAddCustom.visibility = if (tab == "custom") View.VISIBLE else View.GONE
         render()
     }
 
@@ -130,13 +135,26 @@ class DictActivity : AppCompatActivity() {
             actions.addView(btnDel)
             row.addView(actions)
         } else {
+            val actions = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, 8, 0, 0)
+            }
+            val btnDel = Button(ctx).apply {
+                text = "删除"
+                textSize = 12f
+                setMinDp(56, 32)
+                setTextColor(0xFFC62828.toInt())
+                setOnClickListener { deleteNmpaEntry(udi) }
+            }
+            actions.addView(btnDel)
             val note = TextView(ctx).apply {
                 text = "（官方数据，不可编辑；如需改名请用「自定义字典」覆盖）"
                 textSize = 11f
                 setTextColor(0xFF9E9E9E.toInt())
-                setPadding(0, 6, 0, 0)
+                setPadding(8, 0, 0, 0)
             }
-            row.addView(note)
+            actions.addView(note)
+            row.addView(actions)
         }
         listContainer.addView(row)
     }
@@ -173,6 +191,44 @@ class DictActivity : AppCompatActivity() {
             .setPositiveButton("删除") { _, _ ->
                 NmpaCache.deleteOverride(udi)
                 toast("已删除")
+                render()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** 删除单条官方 NMPA 缓存（NMPA 字典仅支持删除）。 */
+    private fun deleteNmpaEntry(udi: String) {
+        AlertDialog.Builder(this)
+            .setTitle("删除 NMPA 缓存")
+            .setMessage("确定从 NMPA 字典库删除 UDI $udi？删除后下次查询会重新联网。")
+            .setPositiveButton("删除") { _, _ ->
+                NmpaCache.deleteCache(udi)
+                toast("已删除")
+                render()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** 新增自定义字典条目（UDI 主键 + 名称/型号/厂家，可空）。 */
+    private fun addCustomEntry() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_add_custom, null)
+        val etUdi = view.findViewById<android.widget.EditText>(R.id.et_udi)
+        val etName = view.findViewById<android.widget.EditText>(R.id.et_name)
+        val etSpec = view.findViewById<android.widget.EditText>(R.id.et_spec)
+        val etCompany = view.findViewById<android.widget.EditText>(R.id.et_company)
+        AlertDialog.Builder(this)
+            .setTitle("新增自定义条目")
+            .setView(view)
+            .setPositiveButton("保存") { _, _ ->
+                val udi = etUdi.text.toString().trim()
+                if (udi.isEmpty()) { toast("UDI 不能为空"); return@setPositiveButton }
+                val name = etName.text.toString().trim().let { if (it.isEmpty()) null else it }
+                val spec = etSpec.text.toString().trim().let { if (it.isEmpty()) null else it }
+                val company = etCompany.text.toString().trim().let { if (it.isEmpty()) null else it }
+                NmpaCache.putOverride(udi, name, spec, company)
+                toast("已新增")
                 render()
             }
             .setNegativeButton("取消", null)

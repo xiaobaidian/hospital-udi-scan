@@ -89,6 +89,46 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
+    <!-- 解析前拼接的原始扫码串（UDI 优先排序；扫码前隐藏，扫到码再展示） -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_raw_dump"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        app:cardCornerRadius="10dp"
+        app:cardBackgroundColor="#FFF8E1"
+        app:cardElevation="3dp"
+        app:strokeColor="#FFB300"
+        app:strokeWidth="2dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/raw_dump_title"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="#E65100" />
+
+            <TextView
+                android:id="@+id/tv_raw_dump"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="13sp"
+                android:textColor="@color/text_main"
+                android:typeface="monospace" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <!-- 「本次将录入」实时预览卡（紧凑，字段分行，保留浅蓝底） -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"

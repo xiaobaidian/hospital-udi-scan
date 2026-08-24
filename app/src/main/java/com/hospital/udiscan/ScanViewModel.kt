@@ -15,7 +15,8 @@ import java.util.UUID
 class ScanViewModel : ViewModel() {
 
     // —— 当前缓冲（待录入）——
-    val scannedRaws = mutableSetOf<String>()
+    // LinkedHashSet：既去重（同串不重复处理）又保留扫码顺序，供「解析前原始串」卡片按序展示。
+    val scannedRaws = LinkedHashSet<String>()
     var bufUdi: String? = null
     var bufBatch: String? = null
     var bufExpiry: String? = null
@@ -135,5 +136,19 @@ class ScanViewModel : ViewModel() {
         parts.addAll(bufPendingUnknown.map { "待确认:$it" })
         if (parts.isEmpty()) parts.addAll(scannedRaws)
         return parts.joinToString(" | ")
+    }
+
+    /**
+     * 解析前拼接好的原始扫码串（保序），按「含 UDI 的在前、其余在后」排序，
+     * 供扫码页「原始串」卡片展示，便于用户核对捕获内容。
+     * 返回 Pair(原始串, 是否含 UDI)。
+     */
+    fun rawDumpSorted(): List<Pair<String, Boolean>> {
+        val list = scannedRaws.map { raw ->
+            val hasUdi = Gs1Parser.parse(raw, alreadyHasUdi = false).fields
+                .any { it.type == Gs1Parser.FieldType.UDI }
+            raw to hasUdi
+        }
+        return list.sortedBy { if (it.second) 0 else 1 }
     }
 }

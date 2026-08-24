@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 必须全量历史，否则 git rev-list --count HEAD 恒为 1，版本号不递增
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

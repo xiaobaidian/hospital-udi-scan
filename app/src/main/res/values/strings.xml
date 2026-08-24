@@ -9,6 +9,7 @@
     <string name="btn_clear">清空清单</string>
     <string name="btn_dict">字典</string>
     <string name="preview_title">本次将录入</string>
+    <string name="raw_dump_title">扫码原始串（解析前 · UDI 优先）</string>
     <string name="manage_title">管理</string>
     <string name="tab_scan">扫码</string>
     <string name="tab_list">清单</string>
@@ -32,6 +33,10 @@
     <string name="menu_import_nmpa_sub">从文件合并官方缓存记录</string>
     <string name="menu_dict">查看字典</string>
     <string name="menu_dict_sub">查看 / 编辑 NMPA 与自定义字典</string>
+    <string name="menu_clear_nmpa">清空 NMPA 字典库</string>
+    <string name="menu_clear_nmpa_sub">删除全部官方查询结果，下次查询重新联网</string>
+    <string name="menu_clear_custom">清空自定义字典库</string>
+    <string name="menu_clear_custom_sub">删除全部手改 / 手补记录（不可恢复）</string>
     <string name="menu_clear">清空清单</string>
     <string name="menu_clear_sub">移除本次已录入的全部条目</string>
     <string name="toast_clear_done">已清空清单</string>

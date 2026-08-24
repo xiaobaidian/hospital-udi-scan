@@ -356,6 +356,12 @@ object NmpaCache {
         try { h.writableDatabase.delete(T_OVERRIDE, null, null) } catch (_: Exception) {}
     }
 
+    /** 只清空官方 NMPA 缓存（保留用户覆盖字典；清空后下次查询会重新联网）。 */
+    fun clearCache() {
+        val h = helper ?: return
+        try { h.writableDatabase.delete(T_CACHE, null, null) } catch (_: Exception) {}
+    }
+
     /** 官方缓存条目数。 */
     fun count(): Int {
         val h = helper ?: return 0

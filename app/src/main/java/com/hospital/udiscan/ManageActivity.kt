@@ -32,6 +32,8 @@ class ManageActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.menu_dict).setOnClickListener {
             startActivity(Intent(this, DictActivity::class.java))
         }
+        findViewById<android.view.View>(R.id.menu_clear_nmpa).setOnClickListener { confirmClear("NMPA 字典库", "确定清空全部官方查询结果？清空后下次扫码会重新联网查询。") { NmpaCache.clearCache() } }
+        findViewById<android.view.View>(R.id.menu_clear_custom).setOnClickListener { confirmClear("自定义字典库", "确定清空全部手改 / 手补记录？此操作不可恢复。") { NmpaCache.clearOverrides() } }
     }
 
     // ——— 导出清单（JSON）———
@@ -157,4 +159,17 @@ class ManageActivity : AppCompatActivity() {
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
+    /** 二次确认后执行清空动作。 */
+    private fun confirmClear(title: String, msg: String, action: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(msg)
+            .setPositiveButton("清空") { _, _ ->
+                action()
+                toast("已清空$title")
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
 }
