@@ -44,8 +44,16 @@ class ItemAdapter(
         }
         holder.tvState.text = txt
         holder.tvState.setTextColor(ContextCompat.getColor(holder.itemView.context, color))
-        holder.btnDel.setOnClickListener { onDelete(position) }
-        holder.btnEdit.setOnClickListener { onEdit(position) }
+        // 关键：必须用 getAdapterPosition() 而非 onBindViewHolder 的 position 参数，
+        // 否则删除中间项后列表重排，旧闭包 position 会错位（点第1条删第2条）。
+        holder.btnDel.setOnClickListener {
+            val ap = holder.getAdapterPosition()
+            if (ap != RecyclerView.NO_POSITION) onDelete(ap)
+        }
+        holder.btnEdit.setOnClickListener {
+            val ap = holder.getAdapterPosition()
+            if (ap != RecyclerView.NO_POSITION) onEdit(ap)
+        }
     }
 
     override fun getItemCount(): Int = items.size

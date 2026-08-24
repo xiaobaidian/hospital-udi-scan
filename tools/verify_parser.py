@@ -147,14 +147,14 @@ def fallback_heuristic(digits: str, already_has_udi: bool):
         if already_has_udi:
             return ("BATCH", "10", g)
         return ("UNKNOWN", None, digits)
-    if len(digits) == 12:
+    if len(digits) == 12 and digits.isdigit():
         g = "00" + digits
         if is_valid_gtin14(g):
             return ("UDI", "01", g)
         if already_has_udi:
             return ("BATCH", "10", digits)
         return ("UNKNOWN", None, digits)
-    if len(digits) == 8:
+    if len(digits) == 8 and digits.isdigit():
         g = "000000" + digits
         if is_valid_gtin14(g):
             return ("UDI", "01", g)
@@ -163,6 +163,12 @@ def fallback_heuristic(digits: str, already_has_udi: bool):
         return ("UNKNOWN", None, digits)
     if len(digits) == 6 and looks_like_date(digits):
         return ("EXPIRY", "17", digits)
+    # 含字母数字的裸串（如 SN12345、LOT2024-A）：不可能是纯数字 GTIN，
+    # 已存在 UDI 时基本可确定是序列号。必须放在纯数字分支之前，否则会被 7~20 位误判。
+    if any(c.isalpha() for c in digits) and 3 <= len(digits) <= 30:
+        if already_has_udi:
+            return ("SERIAL", "21", digits)
+        return ("UNKNOWN", None, digits)
     if 7 <= len(digits) <= 20:
         if already_has_udi:
             return ("SERIAL", "21", digits)
@@ -234,6 +240,16 @@ CASES = [
     # ── 两行拼接但顺序相反（效期行在前）──
     ("两行反向拼接", "17250631100694", False,
      [("EXPIRY", "17", "250631"), ("BATCH", "10", "0694")]),
+    # ── 序列号识别增强：含字母裸串，已存在 UDI 时应判 SERIAL ──
+    ("含字母序列号(已有UDI)", "SN998877", True,
+     [("SERIAL", "21", "SN998877")]),
+    ("含字母序列号(LOT前缀,已有UDI)", "LOT2024-A99", True,
+     [("SERIAL", "21", "LOT2024-A99")]),
+    # ── 低置信度门禁：全是 UNKNOWN 的短码/乱码不应污染缓冲 ──
+    ("乱码短串应UNKNOWN不污染", "ABC", False,
+     [("UNKNOWN", None, "ABC")]),
+    ("纯符号串应UNKNOWN", "@#$%", False,
+     [("UNKNOWN", None, "@#$%")]),
 ]
 
 PASS = 0

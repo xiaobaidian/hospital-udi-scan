@@ -120,8 +120,14 @@ class MainActivity : AppCompatActivity() {
 
         adapter = ItemAdapter(items,
             onDelete = { pos ->
-                items.removeAt(pos)
-                adapter.notifyItemRemoved(pos)
+                if (pos < 0 || pos >= items.size) return@ItemAdapter
+                val removed = items[pos]
+                val idx = items.indexOfFirst { it.id == removed.id }
+                if (idx < 0) return@ItemAdapter
+                items.removeAt(idx)
+                adapter.notifyItemRemoved(idx)
+                // 删除后刷新后续项的位置映射，避免 RecyclerView 复用错位
+                adapter.notifyItemRangeChanged(idx, items.size - idx)
             },
             onEdit = { pos -> editListItem(pos) }
         )
@@ -151,6 +157,8 @@ class MainActivity : AppCompatActivity() {
         // 去抖：800ms 内同串不重复处理
         val now = System.currentTimeMillis()
         if (text == lastRawHandled && now - lastBeepTime < 800) return
+        // 最小长度门禁：太短的码（<4 字符）基本是误读/半截，直接忽略，不嘀不合并
+        if (text.trim().length < 4) return
         if (!scannedRaws.add(text)) return   // 本次缓冲内重复，跳过（连续扫码同一帧）
         lastRawHandled = text
         lastBeepTime = now
@@ -160,15 +168,22 @@ class MainActivity : AppCompatActivity() {
             flashScanFeedback("无法识别", false)
             return
         }
+        // 低置信度门禁：解析结果「全部是 UNKNOWN」（没有任何有效字段）时，
+        // 不响铃、不合并进缓冲，避免乱码/半截码污染当前条目。仅做一次轻提示。
+        val hasValid = parsed.fields.any { it.type != Gs1Parser.FieldType.UNKNOWN }
+        if (!hasValid) {
+            flashScanFeedback("未识别，已忽略", false)
+            return
+        }
         beep()  // 识别到有效字段即「滴」一声 + 震动
 
-        // UDI 冲突检测：已缓冲 UDI 与新扫到 UDI 不同 → 开新条目
+        // UDI 冲突提示（不自动录入）：已缓冲 UDI 与新扫到 UDI 不同，
+        // 仅提示用户「当前有未加入的条目，请先点『加入清单』再扫新货品」，不自动 commit。
         val newUdi = parsed.fields.firstOrNull { it.type == Gs1Parser.FieldType.UDI }?.value
         if (newUdi != null && bufUdi != null && newUdi != bufUdi) {
-            // 冲突：先把当前缓冲提交，再开启新条目
-            commitBuffer()
-            flashScanFeedback("检测到新 UDI，已开新条目", true)
+            flashScanFeedback("⚠ 已扫到不同 UDI，请先『加入清单』", false)
             toast(R.string.toast_udi_conflict)
+            return
         }
 
         // 按类型合并：每类只取第一个尚未填的，避免重复覆盖用户已确认的值

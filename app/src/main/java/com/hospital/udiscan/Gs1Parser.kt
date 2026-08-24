@@ -249,14 +249,14 @@ object Gs1Parser {
                     Field(FieldType.UNKNOWN, null, digits, Source.UNCERTAIN)
                 }
             }
-            // 12 / 8 位 UPC/EAN → 规范补位成 GTIN-14
-            digits.length == 12 -> {
+            // 12 / 8 位 UPC/EAN → 规范补位成 GTIN-14（仅纯数字，含字母的串不走此分支）
+            digits.length == 12 && digits.all { it.isDigit() } -> {
                 val g14 = "00$digits"
                 if (isValidGtin14(g14)) Field(FieldType.UDI, "01", g14, Source.AI_PREFIX)
                 else if (alreadyHasUdi) Field(FieldType.BATCH, "10", digits, Source.HEURISTIC)
                 else Field(FieldType.UNKNOWN, null, digits, Source.UNCERTAIN)
             }
-            digits.length == 8 -> {
+            digits.length == 8 && digits.all { it.isDigit() } -> {
                 val g14 = "000000$digits"
                 if (isValidGtin14(g14)) Field(FieldType.UDI, "01", g14, Source.AI_PREFIX)
                 else if (alreadyHasUdi) Field(FieldType.BATCH, "10", digits, Source.HEURISTIC)
@@ -265,6 +265,12 @@ object Gs1Parser {
             // 6 位且像日期：效期候选（生产/效期歧义交由 UI 或上下文，这里默认效期）
             digits.length == 6 && looksLikeDate(digits) -> {
                 Field(FieldType.EXPIRY, "17", digits, Source.HEURISTIC)
+            }
+            // 含字母数字的裸串（如 SN12345、LOT2024-A）：不可能是纯数字 GTIN，
+            // 已存在 UDI 时基本可确定是序列号。必须放在纯数字分支之前，否则会被 7~20 位误判为 BATCH。
+            digits.any { it.isLetter() } && digits.length in 3..30 -> {
+                if (alreadyHasUdi) Field(FieldType.SERIAL, "21", digits, Source.HEURISTIC)
+                else Field(FieldType.UNKNOWN, null, digits, Source.UNCERTAIN)
             }
             // 7~20 位纯数字且无 UDI：可能序列号/物流码，交给用户指定
             digits.length in 7..20 -> {
