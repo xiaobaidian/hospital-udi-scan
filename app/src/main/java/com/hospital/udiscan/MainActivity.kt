@@ -45,6 +45,18 @@ class MainActivity : AppCompatActivity() {
         tabList.setOnClickListener { pager.currentItem = 1 }
 
         updateTab(0)
+        refreshTopStat()
+    }
+
+    /** 顶部统计条：展示 NMPA 字典与自定义字典条目数（状态栏下方，不显示 APP 名称）。 */
+    private fun refreshTopStat() {
+        val tv = findViewById<TextView>(R.id.top_stat)
+        tv.text = "NMPA 字典 ${NmpaCache.count()} 条 · 自定义字典 ${NmpaCache.overrideCount()} 条"
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshTopStat()
     }
 
     private fun updateTab(pos: Int) {

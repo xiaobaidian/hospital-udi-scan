@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
 
     <!-- 清单页顶部栏 -->
     <LinearLayout
@@ -23,6 +24,16 @@
             android:textColor="#ffffff"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_clear_list"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="@string/btn_clear"
+            android:textSize="13sp"
+            android:textColor="#FFCDD2" />
 
         <TextView
             android:id="@+id/tv_count"

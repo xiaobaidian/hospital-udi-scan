@@ -16,20 +16,25 @@ import java.io.File
 
 class ManageActivity : AppCompatActivity() {
 
-    private val rcImport = 2001
+    private val rcImportCustom = 2001
+    private val rcImportNmpa = 2002
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_manage)
 
         findViewById<Button>(R.id.btn_back).setOnClickListener { finish() }
-        findViewById<android.view.View>(R.id.menu_export).setOnClickListener { exportList() }
-        findViewById<android.view.View>(R.id.menu_import).setOnClickListener { importOverrides() }
-        findViewById<android.view.View>(R.id.menu_dict).setOnClickListener { openDict() }
-        findViewById<android.view.View>(R.id.menu_clear).setOnClickListener { clearList() }
+        findViewById<android.view.View>(R.id.menu_export_list).setOnClickListener { exportList() }
+        findViewById<android.view.View>(R.id.menu_export_nmpa).setOnClickListener { exportNmpa() }
+        findViewById<android.view.View>(R.id.menu_export_custom).setOnClickListener { exportCustom() }
+        findViewById<android.view.View>(R.id.menu_import_custom).setOnClickListener { importFile(rcImportCustom) }
+        findViewById<android.view.View>(R.id.menu_import_nmpa).setOnClickListener { importFile(rcImportNmpa) }
+        findViewById<android.view.View>(R.id.menu_dict).setOnClickListener {
+            startActivity(Intent(this, DictActivity::class.java))
+        }
     }
 
-    // ——— 导出清单（JSON / CSV 系统分享）———
+    // ——— 导出清单（JSON）———
     private fun exportDir(): File {
         val d = File(filesDir, "exports")
         if (!d.exists()) d.mkdirs()
@@ -57,8 +62,28 @@ class ManageActivity : AppCompatActivity() {
             })
         }
         val file = File(exportDir(), "udi_scan_${System.currentTimeMillis()}.json")
-        file.writeText(arr.toString(2), Charsets.UTF_8)
+        file.writeText(arr.toString(1), Charsets.UTF_8)
         shareFile(file, "application/json")
+    }
+
+    // ——— 导出自定义字典（override）———
+    private fun exportCustom() {
+        val json = NmpaCache.exportOverridesJson()
+        if (json == "[]") { toast(getString(R.string.toast_dict_empty)); return }
+        val file = File(exportDir(), "udi_overrides_${System.currentTimeMillis()}.json")
+        file.writeText(json, Charsets.UTF_8)
+        shareFile(file, "application/json")
+        toast(getString(R.string.toast_exported))
+    }
+
+    // ——— 导出 NMPA 官方缓存 ———
+    private fun exportNmpa() {
+        val json = NmpaCache.exportCacheJson()
+        if (json == "[]") { toast(getString(R.string.toast_dict_empty)); return }
+        val file = File(exportDir(), "udi_nmpa_cache_${System.currentTimeMillis()}.json")
+        file.writeText(json, Charsets.UTF_8)
+        shareFile(file, "application/json")
+        toast(getString(R.string.toast_exported))
     }
 
     private fun shareFile(file: File, mime: String) {
@@ -72,51 +97,44 @@ class ManageActivity : AppCompatActivity() {
         toast(getString(R.string.toast_exported))
     }
 
-    // ——— 导入 / 导出 UDI 覆盖字典（多设备同步）———
-    private fun openDict() {
-        val msg = "本地覆盖字典：${NmpaCache.overrideCount()} 条\n" +
-                "NMPA 官方缓存：${NmpaCache.count()} 条\n\n" +
-                "导出：把覆盖字典存成 udi_overrides.json，通过微信/网盘发给其他设备。\n" +
-                "导入：选择其他设备发来的 udi_overrides.json，合并到本机。"
-        AlertDialog.Builder(this)
-            .setTitle("产品字典")
-            .setMessage(msg)
-            .setPositiveButton("导出字典") { _, _ -> exportOverrides() }
-            .setNeutralButton("导入字典") { _, _ -> importOverrides() }
-            .setNegativeButton("关闭", null)
-            .show()
-    }
-
-    private fun exportOverrides() {
-        val json = NmpaCache.exportOverridesJson()
-        val file = File(exportDir(), "udi_overrides.json")
-        file.writeText(json, Charsets.UTF_8)
-        shareFile(file, "application/json")
-        toast(getString(R.string.toast_exported))
-    }
-
-    private fun importOverrides() {
+    // ——— 导入（自定义 / NMPA），由 requestCode 区分 ———
+    private fun importFile(which: Int) {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/json"
         }
-        startActivityForResult(Intent.createChooser(intent, "选择 udi_overrides.json"), rcImport)
+        startActivityForResult(Intent.createChooser(intent, "选择 JSON 文件"), which)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == rcImport && resultCode == RESULT_OK && data != null) {
-            val uri = data.data ?: return
-            Thread {
-                var n = 0
-                try {
-                    val sb = StringBuilder()
-                    contentResolver.openInputStream(uri)?.use { ins ->
-                        BufferedReader(ins.reader(Charsets.UTF_8)).useLines { lines ->
-                            lines.forEach { sb.append(it) }
-                        }
+        if (resultCode != RESULT_OK || data == null) return
+        val uri = data.data ?: return
+        val isNmpa = requestCode == rcImportNmpa
+        Thread {
+            var n = 0
+            try {
+                val sb = StringBuilder()
+                contentResolver.openInputStream(uri)?.use { ins ->
+                    BufferedReader(ins.reader(Charsets.UTF_8)).useLines { lines ->
+                        lines.forEach { sb.append(it) }
                     }
-                    val arr = JSONArray(sb.toString())
+                }
+                val arr = JSONArray(sb.toString())
+                if (isNmpa) {
+                    val list = mutableListOf<NmpaCache.CacheEntry>()
+                    for (i in 0 until arr.length()) {
+                        val o = arr.getJSONObject(i)
+                        list.add(NmpaCache.CacheEntry(
+                            udi = o.optString("udi", ""),
+                            name = o.optString("name", "").let { if (it.isEmpty()) null else it },
+                            spec = o.optString("spec", "").let { if (it.isEmpty()) null else it },
+                            company = o.optString("company", "").let { if (it.isEmpty()) null else it },
+                            state = o.optString("state", "ok").let { if (it.isEmpty()) "ok" else it }
+                        ))
+                    }
+                    n = NmpaCache.importCache(list)
+                } else {
                     val list = mutableListOf<NmpaCache.OverrideEntry>()
                     for (i in 0 until arr.length()) {
                         val o = arr.getJSONObject(i)
@@ -128,26 +146,14 @@ class ManageActivity : AppCompatActivity() {
                         ))
                     }
                     n = NmpaCache.importOverrides(list)
-                } catch (e: Exception) {
-                    runOnUiThread { toast(getString(R.string.toast_import_err)) }
-                    return@Thread
                 }
-                runOnUiThread { toast(getString(R.string.toast_imported, n)) }
-            }.start()
-        }
-    }
-
-    private fun clearList() {
-        if (ScanStore.items.isEmpty()) { toast(getString(R.string.toast_dict_empty)); return }
-        AlertDialog.Builder(this)
-            .setTitle("清空清单")
-            .setMessage("确定移除本次已录入的全部条目？此操作不可撤销。")
-            .setPositiveButton("清空") { _, _ ->
-                ScanStore.clear()
-                toast(getString(R.string.toast_clear_done))
+            } catch (e: Exception) {
+                runOnUiThread { toast(getString(R.string.toast_import_err)) }
+                return@Thread
             }
-            .setNegativeButton("取消", null)
-            .show()
+            val where = if (isNmpa) "NMPA" else "自定义"
+            runOnUiThread { toast("已导入 $where 字典 $n 条") }
+        }.start()
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

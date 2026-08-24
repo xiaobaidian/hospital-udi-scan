@@ -219,6 +219,125 @@ object NmpaCache {
         } catch (e: Exception) { 0 }
     }
 
+    /** 导出官方缓存（NMPA 查回的结果）为 JSON 字符串。 */
+    fun exportCacheJson(): String {
+        val h = helper ?: return "[]"
+        return try {
+            val db = h.readableDatabase
+            val c = db.query(T_CACHE, null, null, null, null, null, "$COL_TS DESC")
+            val arr = JSONArray()
+            while (c.moveToNext()) {
+                arr.put(JSONObject().apply {
+                    put("udi", c.getString(c.getColumnIndexOrThrow(COL_UDI)))
+                    put("name", c.getString(c.getColumnIndexOrThrow(COL_NAME)))
+                    put("spec", c.getString(c.getColumnIndexOrThrow(COL_SPEC)))
+                    put("company", c.getString(c.getColumnIndexOrThrow(COL_COMPANY)))
+                    put("state", c.getString(c.getColumnIndexOrThrow(COL_STATE)))
+                })
+            }
+            c.close()
+            arr.toString(2)
+        } catch (e: Exception) { "[]" }
+    }
+
+    /** 批量导入官方缓存条目（合并写入，已存在则覆盖）。 */
+    fun importCache(items: List<CacheEntry>): Int {
+        val h = helper ?: return 0
+        if (items.isEmpty()) return 0
+        return try {
+            val db = h.writableDatabase
+            db.beginTransaction()
+            try {
+                for (e in items) {
+                    if (e.udi.isBlank()) continue
+                    val cv = ContentValues().apply {
+                        put(COL_UDI, e.udi)
+                        put(COL_NAME, e.name ?: "")
+                        put(COL_SPEC, e.spec ?: "")
+                        put(COL_COMPANY, e.company ?: "")
+                        put(COL_STATE, e.state ?: "ok")
+                        put(COL_TS, System.currentTimeMillis())
+                    }
+                    db.insertWithOnConflict(T_CACHE, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+                }
+                db.setTransactionSuccessful()
+                items.size
+            } finally {
+                db.endTransaction()
+            }
+        } catch (e: Exception) { 0 }
+    }
+
+    /** 官方缓存全部条目（用于查看 / 编辑）。 */
+    fun getAllCache(): List<NmpaResultLite> {
+        val h = helper ?: return emptyList()
+        val out = mutableListOf<NmpaResultLite>()
+        try {
+            val db = h.readableDatabase
+            val c = db.query(T_CACHE, null, null, *null, null, null, "$COL_TS DESC")
+            while (c.moveToNext()) {
+                out.add(NmpaResultLite(
+                    udi = c.getString(c.getColumnIndexOrThrow(COL_UDI)),
+                    name = c.getString(c.getColumnIndexOrThrow(COL_NAME)).let { if (it.isEmpty()) null else it },
+                    spec = c.getString(c.getColumnIndexOrThrow(COL_SPEC)).let { if (it.isEmpty()) null else it },
+                    company = c.getString(c.getColumnIndexOrThrow(COL_COMPANY)).let { if (it.isEmpty()) null else it },
+                    state = c.getString(c.getColumnIndexOrThrow(COL_STATE))
+                ))
+            }
+            c.close()
+        } catch (e: Exception) { }
+        return out
+    }
+
+    /** 删除单条官方缓存（按 UDI）。 */
+    fun deleteCache(udi: String) {
+        val h = helper ?: return
+        try { h.writableDatabase.delete(T_CACHE, "$COL_UDI = ?", arrayOf(udi)) } catch (_: Exception) {}
+    }
+
+    data class CacheEntry(
+        val udi: String,
+        val name: String?,
+        val spec: String?,
+        val company: String?,
+        val state: String?
+    )
+
+    data class NmpaResultLite(
+        val udi: String,
+        val name: String?,
+        val spec: String?,
+        val company: String?,
+        val state: String
+    )
+
+    /** 用户覆盖字典全部条目（用于查看 / 编辑）。 */
+    fun getAllOverrides(): List<NmpaResultLite> {
+        val h = helper ?: return emptyList()
+        val out = mutableListOf<NmpaResultLite>()
+        try {
+            val db = h.readableDatabase
+            val c = db.query(T_OVERRIDE, null, null, null, null, null, "$COL_TS DESC")
+            while (c.moveToNext()) {
+                out.add(NmpaResultLite(
+                    udi = c.getString(c.getColumnIndexOrThrow(COL_UDI)),
+                    name = c.getString(c.getColumnIndexOrThrow(COL_NAME)).let { if (it.isEmpty()) null else it },
+                    spec = c.getString(c.getColumnIndexOrThrow(COL_SPEC)).let { if (it.isEmpty()) null else it },
+                    company = c.getString(c.getColumnIndexOrThrow(COL_COMPANY)).let { if (it.isEmpty()) null else it },
+                    state = "custom"
+                ))
+            }
+            c.close()
+        } catch (e: Exception) { }
+        return out
+    }
+
+    /** 删除单条用户覆盖（按 UDI）。 */
+    fun deleteOverride(udi: String) {
+        val h = helper ?: return
+        try { h.writableDatabase.delete(T_OVERRIDE, "$COL_UDI = ?", arrayOf(udi)) } catch (_: Exception) {}
+    }
+
     /** 清空全部（官方缓存 + 用户覆盖）。供"清空缓存"入口使用。 */
     fun clearAll() {
         val h = helper ?: return

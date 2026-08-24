@@ -27,6 +27,7 @@ class ListFragment : Fragment() {
     private lateinit var tvCount: TextView
     private lateinit var tvEmpty: TextView
     private lateinit var btnManage: Button
+    private lateinit var btnClearList: Button
     private lateinit var adapter: ItemAdapter
 
     override fun onCreateView(
@@ -44,6 +45,7 @@ class ListFragment : Fragment() {
         tvCount = view.findViewById(R.id.tv_count)
         tvEmpty = view.findViewById(R.id.tv_empty)
         btnManage = view.findViewById(R.id.btn_manage)
+        btnClearList = view.findViewById(R.id.btn_clear_list)
 
         adapter = ItemAdapter(vm.items,
             onDelete = { id -> deleteItem(id) },
@@ -55,6 +57,8 @@ class ListFragment : Fragment() {
         btnManage.setOnClickListener {
             startActivity(Intent(requireContext(), ManageActivity::class.java))
         }
+
+        btnClearList.setOnClickListener { clearList() }
 
         // 实时刷新：清单变更 / 缓冲变更（加入后）都刷新
         vm.listVersion.observe(viewLifecycleOwner) { refresh() }
@@ -72,6 +76,21 @@ class ListFragment : Fragment() {
     private fun deleteItem(id: String) {
         vm.removeItemById(id)
         toast(R.string.toast_deleted)
+    }
+
+    private fun clearList() {
+        if (vm.items.isEmpty()) { toast(R.string.toast_dict_empty); return }
+        AlertDialog.Builder(requireContext())
+            .setTitle("清空清单")
+            .setMessage("确定移除本次已录入的全部条目？此操作不可撤销。")
+            .setPositiveButton("清空") { _, _ ->
+                vm.items.clear()
+                ScanStore.clear()
+                toast(R.string.toast_clear_done)
+                refresh()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun editItem(id: String) {

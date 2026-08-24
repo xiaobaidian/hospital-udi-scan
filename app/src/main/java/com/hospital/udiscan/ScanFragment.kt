@@ -267,13 +267,20 @@ class ScanFragment : Fragment() {
         if (cur == null || cur < 1 || cur != vm.bufQty) {
             etQty.setText(vm.bufQty.toString())
         }
-        tvLineUdi.text = "UDI(01)：${vm.bufUdi ?: "—"}"
-        tvLineBatch.text = "批号(10)：${vm.bufBatch ?: "—"}"
+        // 「本次将录入」逐行：有内容才显示，空则隐藏不占位；每行各自背景色已在布局定义。
+        if (vm.bufUdi.isNullOrEmpty()) tvLineUdi.visibility = View.GONE
+        else { tvLineUdi.visibility = View.VISIBLE; tvLineUdi.text = "UDI(01)：${vm.bufUdi}" }
+
+        if (vm.bufBatch.isNullOrEmpty()) tvLineBatch.visibility = View.GONE
+        else { tvLineBatch.visibility = View.VISIBLE; tvLineBatch.text = "批号(10)：${vm.bufBatch}" }
 
         val exp = Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry
-        tvLineExpiry.text = "效期(17)：${exp ?: "—"}"
+        if (exp.isNullOrEmpty()) tvLineExpiry.visibility = View.GONE
+        else { tvLineExpiry.visibility = View.VISIBLE; tvLineExpiry.text = "效期(17)：${exp}" }
+
         val prod = Gs1Parser.formatDateYYMMDD(vm.bufProduction) ?: vm.bufProduction
-        tvLineProd.text = "生产(11)：${prod ?: "—"}"
+        if (prod.isNullOrEmpty()) tvLineProd.visibility = View.GONE
+        else { tvLineProd.visibility = View.VISIBLE; tvLineProd.text = "生产(11)：${prod}" }
 
         val serialAi = vm.bufSerialAi ?: "21"
         if (vm.bufSerial.isNullOrEmpty()) {

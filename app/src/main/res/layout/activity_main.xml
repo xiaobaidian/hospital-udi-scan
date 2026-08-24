@@ -3,29 +3,33 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
 
-    <!-- 顶部状态栏占位（不显示名称，仅保留主色高度，避免被系统状态栏遮挡） -->
+    <!-- 顶部状态栏占位（预留状态栏高度，不显示名称，展示字典统计） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:gravity="center_vertical"
         android:background="@color/primary_dark"
         android:fitsSystemWindows="true">
 
         <TextView
+            android:id="@+id/top_stat"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:minHeight="?attr/actionBarSize"
             android:gravity="center_vertical"
-            android:text="@string/app_name"
+            android:text="字典加载中…"
             android:textColor="#ffffff"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
+            android:textSize="14sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- 左右滑动页面：扫码页(0) / 清单页(1) -->
