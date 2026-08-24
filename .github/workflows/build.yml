@@ -48,14 +48,14 @@ jobs:
         continue-on-error: true
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon -PversionCode=${{ steps.ver.outputs.versionCode }} -PversionName="${{ steps.ver.outputs.versionName }}" > /tmp/build.log 2>&1
+          ./gradlew assembleDebug --no-daemon --console=plain -PversionCode=${{ steps.ver.outputs.versionCode }} -PversionName="${{ steps.ver.outputs.versionName }}" > /tmp/build.log 2>&1
           echo "BUILD_EXIT=$?"
 
       - name: Print build log on failure
         if: always()
         run: |
-          echo "===== /tmp/build.log (tail 200 lines) ====="
-          tail -n 200 /tmp/build.log || echo "(no log)"
+          echo "===== /tmp/build.log FULL ====="
+          cat /tmp/build.log || echo "(no log)"
 
       - name: Upload build log artifact
         if: always()
