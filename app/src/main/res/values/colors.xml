@@ -8,6 +8,7 @@
     <color name="ok">#2E7D32</color>
     <color name="pending">#EF6C00</color>
     <color name="skip">#C62828</color>
+    <color name="btn_query_green">#66BB6A</color>
     <color name="text_main">#212121</color>
     <color name="text_sub">#757575</color>
 </resources>

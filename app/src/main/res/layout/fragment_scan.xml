@@ -40,21 +40,11 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height=" 0dp"
                 android:layout_weight="1" />
         </LinearLayout>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:background="#80000000"
-            android:gravity="center"
-            android:padding="8dp"
-            android:text="@string/hint_scan"
-            android:textColor="#ffffff" />
-
-        <!-- 扫码识别反馈条：默认隐藏 -->
+        <!-- 扫码识别反馈条：默认隐藏（保留此层，去掉底部常驻提示层） -->
         <TextView
             android:id="@+id/scan_flash"
             android:layout_width="match_parent"
@@ -85,7 +75,7 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
-    <!-- 「本次将录入」实时预览卡（紧凑，字段分行） -->
+    <!-- 「本次将录入」实时预览卡（紧凑，字段分行，保留浅蓝底） -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -104,7 +94,7 @@
             android:orientation="vertical"
             android:padding="10dp">
 
-            <!-- 标题行：左标题 + 右侧「改名」按钮 -->
+            <!-- 标题行：左标题（改名按钮已移至下方操作区） -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -119,19 +109,6 @@
                     android:textStyle="bold"
                     android:textSize="13sp"
                     android:textColor="@color/primary_dark" />
-
-                <Button
-                    android:id="@+id/btn_edit_name"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:minWidth="0dp"
-                    android:minHeight="32dp"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="0dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="改名/改型号" />
             </LinearLayout>
 
             <!-- UDI 一行 -->
@@ -152,30 +129,23 @@
                 android:textSize="14sp"
                 android:textColor="@color/text_main" />
 
-            <!-- 效期 + 生产 并列一行 -->
-            <LinearLayout
+            <!-- 效期 一行 -->
+            <TextView
+                android:id="@+id/tv_line_expiry"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="2dp">
+                android:layout_marginTop="2dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_main" />
 
-                <TextView
-                    android:id="@+id/tv_line_expiry"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_main" />
-
-                <TextView
-                    android:id="@+id/tv_line_prod"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="end"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_main" />
-            </LinearLayout>
+            <!-- 生产 一行 -->
+            <TextView
+                android:id="@+id/tv_line_prod"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_main" />
 
             <!-- 序列号 一行（空则隐藏） -->
             <TextView
@@ -187,15 +157,34 @@
                 android:textColor="@color/text_main"
                 android:visibility="gone" />
 
-            <!-- 数量 -->
-            <TextView
-                android:id="@+id/tv_preview_qty"
+            <!-- 数量（可直接填写） -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/text_main"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="数量："
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_main" />
+
+                <EditText
+                    android:id="@+id/et_qty"
+                    android:layout_width="72dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:gravity="center"
+                    android:background="@android:color/transparent"
+                    android:text="1"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_main" />
+            </LinearLayout>
 
             <!-- 未识别/待确认提示 -->
             <TextView
@@ -208,7 +197,7 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- 当前缓冲（待录入）—— 语义卡片：高度自适应，不撑满，按钮始终可见 -->
+    <!-- 操作区（查询 / 改名 / 加入 / 丢弃）—— 移除与预览卡重复的缓冲原文展示 -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -229,76 +218,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/buffer_title"
+                android:text="操作"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="@color/text_main" />
-
-            <TextView
-                android:id="@+id/tv_buffer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:maxLines="6"
-                android:scrollbars="vertical"
-                android:layout_marginTop="6dp"
-                android:textColor="@color/text_main"
-                android:textSize="13sp"
-                android:fontFamily="monospace" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="10dp"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="数量："
-                    android:textColor="@color/text_main" />
-
-                <Button
-                    android:id="@+id/btn_minus"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:minWidth="40dp"
-                    android:minHeight="40dp"
-                    android:padding="0dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="-"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:id="@+id/tv_qty"
-                    android:layout_width="48dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="1"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_main" />
-
-                <Button
-                    android:id="@+id/btn_plus"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:minWidth="40dp"
-                    android:minHeight="40dp"
-                    android:padding="0dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="+"
-                    android:textSize="18sp" />
-
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1" />
-            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -308,7 +231,7 @@
 
                 <Button
                     android:id="@+id/btn_query"
-                    style="@style/Widget.Material3.Button.TonalButton"
+                    style="@style/Widget.Material3.Button"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -317,14 +240,30 @@
                     android:paddingHorizontal="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:text="@string/btn_query" />
+                    android:text="@string/btn_query"
+                    android:textColor="#ffffff"
+                    app:backgroundTint="@color/btn_query_green" />
+
+                <Button
+                    android:id="@+id/btn_edit_name"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:paddingHorizontal="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:text="改名/改型号" />
 
                 <Button
                     android:id="@+id/btn_add"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="6dp"
                     android:layout_marginEnd="6dp"
                     android:minWidth="0dp"
                     android:minHeight="44dp"

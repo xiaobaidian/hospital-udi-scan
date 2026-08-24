@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">UDI 扫码盘点</string>
-    <string name="hint_scan">将条码放入取景框，支持一图多码 / 多帧累积</string>
     <string name="btn_query">查 NMPA</string>
     <string name="btn_add">加入清单</string>
     <string name="btn_discard">丢弃</string>
@@ -8,7 +7,6 @@
     <string name="btn_export_csv">导出 CSV</string>
     <string name="btn_clear">清空清单</string>
     <string name="btn_dict">字典</string>
-    <string name="buffer_title">当前待录入</string>
     <string name="preview_title">本次将录入</string>
     <string name="manage_title">管理</string>
     <string name="tab_scan">扫码</string>
@@ -18,21 +16,8 @@
     <string name="toast_added">已加入清单（左滑查看）</string>
     <string name="toast_discarded">已清空当前待录入</string>
     <string name="toast_deleted">已删除该条</string>
-    <string name="preview_qty">数量：%1$d</string>
     <string name="preview_hint_empty">扫码后自动汇总字段</string>
     <string name="preview_hint_pending">待确认：%1$s</string>
-    <string name="chip_udi">UDI</string>
-    <string name="chip_batch">批号</string>
-    <string name="chip_expiry">效期</string>
-    <string name="chip_prod">生产</string>
-    <string name="chip_serial">序列</string>
-    <string name="chip_unknown">待指定</string>
-    <string name="dialog_assign_title">指定字段类型</string>
-    <string name="assign_udi">UDI（01）</string>
-    <string name="assign_batch">批号（10）</string>
-    <string name="assign_expiry">效期（17）</string>
-    <string name="assign_prod">生产（11）</string>
-    <string name="assign_serial">序列号（21）</string>
     <string name="toast_udi_conflict">检测到新 UDI，已开新条目</string>
     <string name="menu_export">导出清单</string>
     <string name="menu_export_sub">导出 JSON / CSV，触发系统分享</string>

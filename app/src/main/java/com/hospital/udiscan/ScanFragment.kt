@@ -35,11 +35,8 @@ class ScanFragment : Fragment() {
 
     private lateinit var vm: ScanViewModel
     private lateinit var scanner: DecoratedBarcodeView
-    private lateinit var tvBuffer: TextView
     private lateinit var tvProductTop: TextView
-    private lateinit var tvQty: TextView
-    private lateinit var btnPlus: Button
-    private lateinit var btnMinus: Button
+    private lateinit var etQty: android.widget.EditText
     private lateinit var btnQuery: Button
     private lateinit var btnAdd: Button
     private lateinit var btnDiscard: Button
@@ -50,7 +47,6 @@ class ScanFragment : Fragment() {
     private lateinit var tvLineExpiry: TextView
     private lateinit var tvLineProd: TextView
     private lateinit var tvLineSerial: TextView
-    private lateinit var tvPreviewQty: TextView
     private lateinit var tvPreviewHint: TextView
 
     // —— 扫码闪光反馈 ——
@@ -78,11 +74,8 @@ class ScanFragment : Fragment() {
         vibrator = requireContext().getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
 
         scanner = view.findViewById(R.id.barcode_scanner)
-        tvBuffer = view.findViewById(R.id.tv_buffer)
         tvProductTop = view.findViewById(R.id.tv_product_top)
-        tvQty = view.findViewById(R.id.tv_qty)
-        btnPlus = view.findViewById(R.id.btn_plus)
-        btnMinus = view.findViewById(R.id.btn_minus)
+        etQty = view.findViewById(R.id.et_qty)
         btnQuery = view.findViewById(R.id.btn_query)
         btnAdd = view.findViewById(R.id.btn_add)
         btnDiscard = view.findViewById(R.id.btn_discard)
@@ -93,7 +86,6 @@ class ScanFragment : Fragment() {
         tvLineExpiry = view.findViewById(R.id.tv_line_expiry)
         tvLineProd = view.findViewById(R.id.tv_line_prod)
         tvLineSerial = view.findViewById(R.id.tv_line_serial)
-        tvPreviewQty = view.findViewById(R.id.tv_preview_qty)
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
 
         // —— 解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
@@ -128,8 +120,16 @@ class ScanFragment : Fragment() {
             override fun possibleResultPoints(points: List<com.google.zxing.ResultPoint>) {}
         })
 
-        btnPlus.setOnClickListener { vm.bufQty++; updateBufferUi() }
-        btnMinus.setOnClickListener { if (vm.bufQty > 1) vm.bufQty--; updateBufferUi() }
+        // 数量可直接填写，实时写回 vm.bufQty
+        etQty.setText(vm.bufQty.toString())
+        etQty.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(editable: android.text.Editable?) {
+                val v = editable?.toString()?.toIntOrNull()
+                if (v != null && v >= 1) vm.bufQty = v
+            }
+        })
         btnQuery.setOnClickListener {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) queryNmpa(udi) else toast(R.string.toast_no_udi)
@@ -237,20 +237,6 @@ class ScanFragment : Fragment() {
     }
 
     private fun updateBufferUi() {
-        val b = StringBuilder()
-        // 来源标记：自动分辨条码/二维码
-        val src = if (vm.bufSource == "qr") "📷 二维码（两行合并）" else "▌ 一维条码"
-        b.append("来源：$src\n")
-        appendField(b, "UDI(01)", vm.bufUdi, true)
-        appendField(b, "批号(10)", vm.bufBatch)
-        appendField(b, "效期(17)", Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry)
-        appendField(b, "生产(11)", Gs1Parser.formatDateYYMMDD(vm.bufProduction) ?: vm.bufProduction)
-        val serialAi = vm.bufSerialAi ?: "21"
-        appendField(b, "序列($serialAi)", vm.bufSerial)
-        if (vm.bufPendingUnknown.isNotEmpty()) {
-            b.append("\n⚠ 待确认：").append(vm.bufPendingUnknown.joinToString(" / "))
-        }
-        tvBuffer.text = b.toString()
         // 顶部醒目横条：查询到的名称 + 型号（型号另起一行，更直观）
         val namePart = when (vm.bufNmpaState) {
             "ok" -> "✓ ${vm.bufProduct ?: ""}"
@@ -269,7 +255,6 @@ class ScanFragment : Fragment() {
             tvProductTop.visibility = View.VISIBLE
             tvProductTop.text = topText
         }
-        tvQty.text = vm.bufQty.toString()
         updatePreviewCard()
     }
 
@@ -277,6 +262,11 @@ class ScanFragment : Fragment() {
     private fun updatePreviewCard() {
         // 来源标记：自动分辨条码/二维码
         val src = if (vm.bufSource == "qr") "📷 二维码" else "▌ 条码"
+        // 数量回填（仅在用户未在编辑时同步，避免打断输入）
+        val cur = etQty.text.toString().toIntOrNull()
+        if (cur == null || cur < 1 || cur != vm.bufQty) {
+            etQty.setText(vm.bufQty.toString())
+        }
         tvLineUdi.text = "UDI(01)：${vm.bufUdi ?: "—"}"
         tvLineBatch.text = "批号(10)：${vm.bufBatch ?: "—"}"
 
@@ -293,8 +283,6 @@ class ScanFragment : Fragment() {
             tvLineSerial.text = "序列($serialAi)：${vm.bufSerial}"
         }
 
-        tvPreviewQty.text = "$src · " + getString(R.string.preview_qty, vm.bufQty)
-
         if (vm.bufPendingUnknown.isNotEmpty()) {
             tvPreviewHint.text = getString(R.string.preview_hint_pending, vm.bufPendingUnknown.joinToString(" / "))
             tvPreviewHint.visibility = View.VISIBLE
@@ -302,38 +290,6 @@ class ScanFragment : Fragment() {
             tvPreviewHint.text = getString(R.string.preview_hint_empty)
             tvPreviewHint.visibility = View.VISIBLE
         }
-    }
-
-    /** 对待确认段手动指定字段类型（点 chip 触发）。 */
-    private fun assignUnknown(value: String) {
-        val options = arrayOf(
-            getString(R.string.assign_udi),
-            getString(R.string.assign_batch),
-            getString(R.string.assign_expiry),
-            getString(R.string.assign_prod),
-            getString(R.string.assign_serial)
-        )
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.dialog_assign_title))
-            .setMessage("原始内容：$value")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> if (vm.bufUdi == null) vm.bufUdi = value
-                    1 -> if (vm.bufBatch == null) vm.bufBatch = value
-                    2 -> if (vm.bufExpiry == null) vm.bufExpiry = value
-                    3 -> if (vm.bufProduction == null) vm.bufProduction = value
-                    4 -> if (vm.bufSerial == null) { vm.bufSerial = value; vm.bufSerialAi = "21" }
-                }
-                vm.bufPendingUnknown = vm.bufPendingUnknown.filter { it != value }
-                updateBufferUi()
-            }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun appendField(b: StringBuilder, label: String, value: String?, strong: Boolean = false) {
-        val v = value ?: "—"
-        if (strong) b.append("► $label: $v\n") else b.append("  $label: $v\n")
     }
 
     /** 扫码成功/失败时的视觉反馈：顶部闪光条 + 文字提示。 */
