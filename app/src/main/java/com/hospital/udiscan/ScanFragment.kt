@@ -126,8 +126,12 @@ class ScanFragment : Fragment() {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) queryNmpa(udi) else toast(R.string.toast_no_udi)
         }
-        btnAdd.setOnClickListener { commitBuffer() }
-        btnDiscard.setOnClickListener { vm.clearBuffer() }
+        btnAdd.setOnClickListener { commitBuffer(); updateBufferUi() }
+        btnDiscard.setOnClickListener {
+            vm.clearBuffer()
+            updateBufferUi()
+            toast(R.string.toast_discarded)
+        }
 
         tvProduct.setOnClickListener {
             val udi = vm.bufUdi
@@ -233,13 +237,14 @@ class ScanFragment : Fragment() {
         appendField(b, "批号(10)", vm.bufBatch)
         appendField(b, "效期(17)", Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry)
         appendField(b, "生产(11)", Gs1Parser.formatDateYYMMDD(vm.bufProduction) ?: vm.bufProduction)
-        appendField(b, "序列(${vm.bufSerialAi ?: "?"}", vm.bufSerial)
+        val serialAi = vm.bufSerialAi ?: "21"
+        appendField(b, "序列($serialAi)", vm.bufSerial)
         if (vm.bufPendingUnknown.isNotEmpty()) {
             b.append("\n⚠ 待确认：").append(vm.bufPendingUnknown.joinToString(" / "))
         }
         tvBuffer.text = b.toString()
-        // 顶部醒目横条：查询到的型号/名称优先显示在这里（更直观）
-        val topText = when (vm.bufNmpaState) {
+        // 顶部醒目横条：查询到的名称 + 型号（型号另起一行，更直观）
+        val namePart = when (vm.bufNmpaState) {
             "ok" -> "✓ ${vm.bufProduct ?: ""}"
             "local" -> "✎ 本地字典：${vm.bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${vm.bufProduct ?: ""}"
@@ -248,6 +253,8 @@ class ScanFragment : Fragment() {
             "querying" -> "… 查询中"
             else -> vm.bufProduct ?: ""
         }
+        val specPart = if (!vm.bufSpec.isNullOrEmpty()) "型号：${vm.bufSpec}" else ""
+        val topText = if (namePart.isEmpty()) specPart else if (specPart.isEmpty()) namePart else "$namePart\n$specPart"
         if (topText.isEmpty()) {
             tvProductTop.visibility = View.GONE
         } else {

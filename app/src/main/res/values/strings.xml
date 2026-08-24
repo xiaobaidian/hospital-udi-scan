@@ -16,6 +16,7 @@
     <string name="list_title">已录入清单</string>
     <string name="swipe_back_hint">← 右滑返回扫码页 · 左滑回到扫码页 →</string>
     <string name="toast_added">已加入清单（左滑查看）</string>
+    <string name="toast_discarded">已清空当前待录入</string>
     <string name="toast_deleted">已删除该条</string>
     <string name="preview_qty">数量：%1$d</string>
     <string name="preview_hint_empty">扫码后自动汇总字段</string>
