@@ -36,7 +36,6 @@ class ScanFragment : Fragment() {
     private lateinit var vm: ScanViewModel
     private lateinit var scanner: DecoratedBarcodeView
     private lateinit var tvBuffer: TextView
-    private lateinit var tvProduct: TextView
     private lateinit var tvProductTop: TextView
     private lateinit var tvQty: TextView
     private lateinit var btnPlus: Button
@@ -80,7 +79,6 @@ class ScanFragment : Fragment() {
 
         scanner = view.findViewById(R.id.barcode_scanner)
         tvBuffer = view.findViewById(R.id.tv_buffer)
-        tvProduct = view.findViewById(R.id.tv_product)
         tvProductTop = view.findViewById(R.id.tv_product_top)
         tvQty = view.findViewById(R.id.tv_qty)
         btnPlus = view.findViewById(R.id.btn_plus)
@@ -271,8 +269,6 @@ class ScanFragment : Fragment() {
             tvProductTop.visibility = View.VISIBLE
             tvProductTop.text = topText
         }
-        // 缓冲卡内的 tvProduct 仅作占位，改名入口已挪到右上按钮
-        tvProduct.text = ""
         tvQty.text = vm.bufQty.toString()
         updatePreviewCard()
     }
