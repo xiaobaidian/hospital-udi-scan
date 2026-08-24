@@ -123,6 +123,17 @@ def _starts_with_ai(s: str) -> bool:
 
 
 def fallback_heuristic(digits: str, already_has_udi: bool):
+    # 裸串以序列号 AI 开头（21/91）：后面整段即序列号
+    if digits.startswith("21") or digits.startswith("91"):
+        rest = digits[2:]
+        if rest:
+            return ("SERIAL", digits[:2], rest)
+    # 裸串以日期 AI 开头（11/17）：必须后接 6 位真日期才算数
+    if digits.startswith("11") or digits.startswith("17"):
+        rest = digits[2:]
+        if len(rest) == 6 and looks_like_date(rest):
+            return (TYPE_MAP.get(digits[:2], "UNKNOWN"), digits[:2], rest)
+        return ("UNKNOWN", digits[:2], rest)
     if len(digits) == 14:
         if is_valid_gtin14(digits):
             return ("UDI", "01", digits)

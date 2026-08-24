@@ -186,6 +186,13 @@ object Gs1Parser {
                 val len = FIXED[ai]!!
                 value = s.substring(i, minOf(i + len, n)).trim()
                 i += len
+                // 日期型定长 AI(11/17)：后面必须是 6 位「能解析成日期」的数字才算数。
+                // 不是真日期（标签错印 / AI 出现在不该出现的位置）→ 该段降级为 UNKNOWN，
+                // 不污染效期/生产日字段。下游可让用户手动指定。
+                if ((ai == "11" || ai == "17") && !looksLikeDate(value)) {
+                    fields.add(Field(FieldType.UNKNOWN, ai, value, Source.UNCERTAIN))
+                    continue
+                }
             } else {
                 // 变长：吃到「下一个真 AI 边界」或分隔符或串尾
                 val start = i
@@ -207,6 +214,19 @@ object Gs1Parser {
      * @return 判定出的字段，或 null（表示完全无法判定，交给上层 UNKNOWN）
      */
     private fun fallbackHeuristic(digits: String, alreadyHasUdi: Boolean): Field? {
+        // 裸串以序列号 AI 开头（21/91）：后面整段即序列号（序列号常在末尾，不会误判）
+        if (digits.startsWith("21") || digits.startsWith("91")) {
+            val rest = digits.substring(2)
+            if (rest.isNotEmpty()) return Field(FieldType.SERIAL, digits.substring(0, 2), rest, Source.AI_PREFIX)
+        }
+        // 裸串以日期 AI 开头（11/17）：必须后接 6 位真日期才算数
+        if (digits.startsWith("11") || digits.startsWith("17")) {
+            val rest = digits.substring(2)
+            if (rest.length == 6 && looksLikeDate(rest)) {
+                return Field(typeOf(digits.substring(0, 2)), digits.substring(0, 2), rest, Source.AI_PREFIX)
+            }
+            return Field(FieldType.UNKNOWN, digits.substring(0, 2), rest, Source.UNCERTAIN)
+        }
         return when {
             // 14 位：仅过 GTIN-14 校验位才敢当 UDI；否则结合上下文降级
             digits.length == 14 -> {
