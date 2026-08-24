@@ -181,7 +181,10 @@ def parse(raw: str, already_has_udi: bool = False):
         return []
     s = raw.replace("(", "").replace(")", "")
     # FNC1/GS 直接删除（不留空格），避免定长值误吞分隔符空格
-    clean = s.replace("\x1d", "")
+    s = s.replace("\x1d", "")
+    # 二维码常把「两行条形码」拼成一个串，行间用 \n / \r 分隔 —— 统一转成空格
+    s = s.replace("\n", " ").replace("\r", " ")
+    clean = s
     fields = scan_by_ai_prefix(clean)
     if fields:
         return fields
@@ -250,6 +253,11 @@ CASES = [
      [("UNKNOWN", None, "ABC")]),
     ("纯符号串应UNKNOWN", "@#$%", False,
      [("UNKNOWN", None, "@#$%")]),
+    # ── 二维码（两行条形码拼接）归一化验证 ──
+    ("二维码两行拼接(\\n分隔,括号HRI)", "(01)06949450446782(17)250631\n(10)LOT123", False,
+     [("UDI", "01", "06949450446782"), ("EXPIRY", "17", "250631"), ("BATCH", "10", "LOT123")]),
+    ("二维码两行拼接(\\n分隔,纯前缀)", "010694945044678217250631\n10LOT123", False,
+     [("UDI", "01", "06949450446782"), ("EXPIRY", "17", "250631"), ("BATCH", "10", "LOT123")]),
 ]
 
 PASS = 0

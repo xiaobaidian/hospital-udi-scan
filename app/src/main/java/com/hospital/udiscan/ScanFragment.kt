@@ -111,7 +111,10 @@ class ScanFragment : Fragment() {
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
                 val text = result.text ?: return
-                onScanned(text)
+                // 自动分辨来源：一维码(Code128/39/93/ITF/CODABAR…) vs 二维码(QR/DataMatrix)
+                val fmt = result.barcodeFormat
+                val isQr = fmt == BarcodeFormat.QR_CODE || fmt == BarcodeFormat.DATA_MATRIX
+                onScanned(text, isQr)
             }
 
             override fun possibleResultPoints(points: List<com.google.zxing.ResultPoint>) {}
@@ -145,7 +148,7 @@ class ScanFragment : Fragment() {
     }
 
     // ——— 扫码回调：按字段「语义类型」合并到缓冲（而非按出现顺序填坑）———
-    private fun onScanned(text: String) {
+    private fun onScanned(text: String, isQr: Boolean = false) {
         val now = System.currentTimeMillis()
         if (text == lastRawHandled && now - lastBeepTime < 800) return
         if (text.trim().length < 4) return
@@ -164,6 +167,9 @@ class ScanFragment : Fragment() {
             return
         }
         beep()
+
+        // 记录本次来源（条码 / 二维码），供缓冲卡显示
+        vm.bufSource = if (isQr) "qr" else "barcode"
 
         val newUdi = parsed.fields.firstOrNull { it.type == Gs1Parser.FieldType.UDI }?.value
         if (newUdi != null && vm.bufUdi != null && newUdi != vm.bufUdi) {
@@ -205,7 +211,8 @@ class ScanFragment : Fragment() {
     private fun describeScan(res: Gs1Parser.Gs1Result, unknowns: List<Gs1Parser.Field>): String {
         val types = res.fields.mapNotNull { labelOf(it.type) }
         val extra = if (unknowns.isNotEmpty()) " · 待确认 ${unknowns.size} 段" else ""
-        return "识别：" + (types.distinct().joinToString(" ") { "「$it」" }) + extra
+        val src = if (vm.bufSource == "qr") "二维码" else "条码"
+        return "[$src] 识别：" + (types.distinct().joinToString(" ") { "「$it」" }) + extra
     }
 
     private fun labelOf(t: Gs1Parser.FieldType): String = when (t) {
@@ -219,6 +226,9 @@ class ScanFragment : Fragment() {
 
     private fun updateBufferUi() {
         val b = StringBuilder()
+        // 来源标记：自动分辨条码/二维码
+        val src = if (vm.bufSource == "qr") "📷 二维码（两行合并）" else "▌ 一维条码"
+        b.append("来源：$src\n")
         appendField(b, "UDI(01)", vm.bufUdi, true)
         appendField(b, "批号(10)", vm.bufBatch)
         appendField(b, "效期(17)", Gs1Parser.formatDateYYMMDD(vm.bufExpiry) ?: vm.bufExpiry)

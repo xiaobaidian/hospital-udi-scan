@@ -91,8 +91,15 @@ object Gs1Parser {
         if (raw.isEmpty()) return Gs1Result(emptyList(), raw)
 
         // 1) 归一化：剥括号；FNC1/GS(ASCII 29) 直接删除（不留空格，避免定长值误吞分隔符）
+        //    二维码常把「两行条形码」拼接成一个串，行间用 \n 或 \r 分隔 —— 统一转成空格，
+        //    这样后续按位置扫描时两行内容被正确切分为多个字段。
         val fnc1 = 29.toChar()
-        val s = raw.replace("(", "").replace(")", "").replace(fnc1.toString(), "")
+        val s = raw
+            .replace("(", "")
+            .replace(")", "")
+            .replace(fnc1.toString(), "")
+            .replace("\n", " ")
+            .replace("\r", " ")
         val clean = s
 
         // 2) 若整串「不以已知 AI 开头」（如裸日期 250631、裸非 GTIN 14 位），

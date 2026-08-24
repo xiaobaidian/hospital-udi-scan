@@ -28,6 +28,8 @@ class ScanViewModel : ViewModel() {
     var bufNmpaState: String = "none"
     var bufQty: Int = 1
     var queriedUdi: String? = null
+    // 本次扫描来源：barcode=一维码(Code128 等) / qr=二维码(QR/DataMatrix)
+    var bufSource: String = "barcode"
     // 待确认（未知段）：缓冲还没有 UDI 时，暂存未归类的纯数字/文本
     var bufPendingUnknown: List<String> = emptyList()
 
@@ -118,6 +120,7 @@ class ScanViewModel : ViewModel() {
         bufProduct = null; bufSpec = null; bufCompany = null
         bufNmpaState = "none"; bufQty = 1; queriedUdi = null
         bufPendingUnknown = emptyList()
+        bufSource = "barcode"
         bumpBuffer()
     }
 
