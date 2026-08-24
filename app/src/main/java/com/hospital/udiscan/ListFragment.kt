@@ -81,12 +81,11 @@ class ListFragment : Fragment() {
         showEditDialog(udi, existing?.productName ?: it.productName,
             existing?.specification ?: it.specification,
             existing?.companyName ?: it.companyName) { name, spec, company ->
-            // 写 override 后就地刷新 item
-            it.productName = name ?: it.productName
-            it.specification = spec ?: it.specification
-            it.companyName = company ?: it.companyName
-            it.nmpaState = "local"
-            vm.refreshItem(it)
+            // 1) 写入用户覆盖字典（落库，跨设备同步用）
+            NmpaCache.putOverride(udi, name, spec, company)
+            // 2) 同 UDI 的所有已录入条目一并更新（型号/名称/厂家）
+            val n = vm.updateAllByUdi(udi, name, spec, company)
+            toast(getString(R.string.toast_saved_all, n))
         }
     }
 

@@ -90,6 +90,27 @@ class ScanViewModel : ViewModel() {
         if (idx >= 0) bumpList()
     }
 
+    /**
+     * 按 UDI 批量同步：把同一 UDI-DI 的所有已录入条目，统一更新为新的名称/型号/厂家。
+     * 用于「改了某个 UDI 的型号/名称，凡是同 UDI 的条目都要跟着改」的需求。
+     * 返回被更新的条目数（含传入的 it 自身）。
+     */
+    fun updateAllByUdi(udi: String, name: String?, spec: String?, company: String?): Int {
+        if (udi.isBlank()) return 0
+        var changed = 0
+        for (it in items) {
+            if (it.udiDi == udi) {
+                it.productName = name ?: it.productName
+                it.specification = spec ?: it.specification
+                it.companyName = company ?: it.companyName
+                it.nmpaState = "local"
+                changed++
+            }
+        }
+        if (changed > 0) bumpList()
+        return changed
+    }
+
     fun clearBuffer() {
         scannedRaws.clear()
         bufUdi = null; bufBatch = null; bufExpiry = null; bufProduction = null

@@ -380,13 +380,20 @@ class ScanFragment : Fragment() {
         toast(R.string.toast_added)
     }
 
-    // ——— 编辑当前缓冲产品（写入 override）———
+    // ——— 编辑当前缓冲产品（写入 override，并同步已录入的同 UDI 条目）———
     private fun editCurrentProduct(udi: String) {
         val existing = NmpaCache.getOverride(udi) ?: NmpaCache.get(udi)
-        showEditDialog(udi, existing?.productName, existing?.specification, existing?.companyName)
+        showEditDialog(udi, existing?.productName, existing?.specification, existing?.companyName) { name, spec, company ->
+            // 写 override 落库 + 同步清单里同 UDI 条目
+            NmpaCache.putOverride(udi, name, spec, company)
+            vm.updateAllByUdi(udi, name, spec, company)
+        }
     }
 
-    private fun showEditDialog(udi: String, defName: String?, defSpec: String?, defCompany: String?) {
+    private fun showEditDialog(
+        udi: String, defName: String?, defSpec: String?, defCompany: String?,
+        onSaved: (String?, String?, String?) -> Unit = { _, _, _ -> }
+    ) {
         val ctx = requireContext()
         val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_edit_product, null)
         val etName = view.findViewById<android.widget.EditText>(R.id.et_name)
@@ -413,6 +420,7 @@ class ScanFragment : Fragment() {
                     }
                     updateBufferUi()
                 }
+                onSaved(name, spec, company)
                 toast(R.string.toast_saved)
             }
             .setNegativeButton("取消", null)
