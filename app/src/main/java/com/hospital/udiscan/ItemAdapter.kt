@@ -10,8 +10,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 class ItemAdapter(
     private val items: MutableList<ScanItem>,
-    private val onDelete: (Int) -> Unit,
-    private val onEdit: (Int) -> Unit
+    private val onDelete: (String) -> Unit,
+    private val onEdit: (String) -> Unit
 ) : RecyclerView.Adapter<ItemAdapter.VH>() {
 
     class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -44,15 +44,12 @@ class ItemAdapter(
         }
         holder.tvState.text = txt
         holder.tvState.setTextColor(ContextCompat.getColor(holder.itemView.context, color))
-        // 关键：必须用 getAdapterPosition() 而非 onBindViewHolder 的 position 参数，
-        // 否则删除中间项后列表重排，旧闭包 position 会错位（点第1条删第2条）。
+        // 按 item.id 回调，避免删除中间项后位置错位（点第1条删第2条）。
         holder.btnDel.setOnClickListener {
-            val ap = holder.getAdapterPosition()
-            if (ap != RecyclerView.NO_POSITION) onDelete(ap)
+            onDelete(it.id)
         }
         holder.btnEdit.setOnClickListener {
-            val ap = holder.getAdapterPosition()
-            if (ap != RecyclerView.NO_POSITION) onEdit(ap)
+            onEdit(it.id)
         }
     }
 
