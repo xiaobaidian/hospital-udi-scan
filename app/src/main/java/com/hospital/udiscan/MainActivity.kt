@@ -277,9 +277,9 @@ class MainActivity : AppCompatActivity() {
 
         // 待确认 / 未知段提示（可点击手动指定）
         if (bufPendingUnknown.isNotEmpty()) {
-            for (val in bufPendingUnknown) {
+            for (vv in bufPendingUnknown) {
                 val chip = TextView(this).apply {
-                    text = "${getString(R.string.chip_unknown)}: $val"
+                    text = "${getString(R.string.chip_unknown)}: $vv"
                     setPadding(12, 6, 12, 6)
                     textSize = 13f
                     setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.white))
@@ -290,7 +290,7 @@ class MainActivity : AppCompatActivity() {
                     )
                     lp.setMargins(0, 0, 8, 8)
                     layoutParams = lp
-                    setOnClickListener { assignUnknown(val) }
+                    setOnClickListener { assignUnknown(vv) }
                 }
                 previewChips.addView(chip)
             }

@@ -142,7 +142,7 @@ def main():
             is_binary = True
         data = {"content": b64, "encoding": "base64"}
         r, c = api("POST", f"/repos/{REPO}/git/blobs", token, data)
-        if c != 201:
+        if c != 201 or "sha" not in r:
             print(f"blob 失败 {path}:", c, r)
             sys.exit(1)
         blobs[path] = r["sha"]

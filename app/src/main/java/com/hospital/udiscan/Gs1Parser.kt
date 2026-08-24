@@ -175,9 +175,10 @@ object Gs1Parser {
         var i = 0
         while (i < n) {
             if (s[i] == ' ' || s[i].isWhitespace()) { i++; continue }
-            val ai = aiAt(s, i) ?: run {
+            val ai = aiAt(s, i)
+            if (ai == null) {
                 if (fields.isEmpty()) return emptyList()  // 整串无 AI 前缀 → 兜底
-                break
+                break  // 已有字段却遇非 AI 字符：截断保护
             }
             i += ai.length
             val value: String
