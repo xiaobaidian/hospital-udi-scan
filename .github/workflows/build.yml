@@ -45,14 +45,13 @@ jobs:
 
       - name: Build debug APK (capture log)
         id: build
-        continue-on-error: true
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --console=plain -PversionCode=${{ steps.ver.outputs.versionCode }} -PversionName="${{ steps.ver.outputs.versionName }}" > /tmp/build.log 2>&1
           echo "BUILD_EXIT=$?"
 
       - name: Print build log on failure
-        if: always()
+        if: failure()
         run: |
           echo "===== /tmp/build.log FULL ====="
           cat /tmp/build.log || echo "(no log)"
@@ -64,11 +63,6 @@ jobs:
           name: build-log
           path: /tmp/build.log
           if-no-files-found: warn
-
-      - name: Fail if build errored
-        if: always()
-        run: |
-          if grep -q "BUILD_EXIT=0" /tmp/build.log 2>/dev/null; then echo "build ok"; else echo "build failed"; exit 1; fi
 
       - name: Upload build log for diagnosis (commit comment)
         if: always()
