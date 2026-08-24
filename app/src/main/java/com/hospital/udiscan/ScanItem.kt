@@ -10,11 +10,11 @@ import java.util.Locale
 data class ScanItem(
     val id: String,
     val udiDi: String?,
-    val batch: String?,        // (10) 批号
-    val expiry: String?,       // (17) 效期 原始 YYMMDD
-    val production: String?,   // (11) 生产日期
-    val serial: String?,       // (21) 或 (91) 序列号
-    val serialAi: String?,     // "21" / "91"
+    var batch: String?,        // (10) 批号
+    var expiry: String?,       // (17) 效期 原始 YYMMDD
+    var production: String?,   // (11) 生产日期
+    var serial: String?,       // (21) 或 (91) 序列号
+    var serialAi: String?,     // "21" / "91"
     var productName: String?,
     var specification: String?,
     var companyName: String?,
