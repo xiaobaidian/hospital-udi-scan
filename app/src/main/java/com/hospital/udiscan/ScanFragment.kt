@@ -22,12 +22,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
-import com.journeyapps.barcodescanner.DefaultDecoder
-import com.journeyapps.barcodescanner.Decoder
-import com.journeyapps.barcodescanner.DecoderFactory
-import com.journeyapps.barcodescanner.camera.CameraSettings
+import com.journeyapps.barcodescanner.DefaultDecoderFactory
 import com.google.zxing.BarcodeFormat
-import com.google.zxing.DecodeHintType
 import java.util.UUID
 
 /**
@@ -92,32 +88,25 @@ class ScanFragment : Fragment() {
         tvPreviewQty = view.findViewById(R.id.tv_preview_qty)
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
 
-        // —— 相机/解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
-        // 1) 提高预览分辨率，长条码更清晰
-        val cs = CameraSettings()
-        cs.requestedCameraPreviewSize = android.util.Size(1920, 1080)
-        scanner.barcodeView.cameraSettings = cs
-        // 2) 显式启用全部一维码格式 + tryHarder，覆盖长条码与畸变
-        scanner.barcodeView.decoderFactory = object : DecoderFactory {
-            override fun createDecoder(hints: MutableMap<DecodeHintType, Any>): Decoder {
-                hints[DecodeHintType.TRY_HARDER] = true
-                hints[DecodeHintType.POSSIBLE_FORMATS] = listOf(
-                    BarcodeFormat.CODE_128,
-                    BarcodeFormat.CODE_39,
-                    BarcodeFormat.CODE_93,
-                    BarcodeFormat.ITF,
-                    BarcodeFormat.CODABAR,
-                    BarcodeFormat.EAN_13,
-                    BarcodeFormat.EAN_8,
-                    BarcodeFormat.UPC_A,
-                    BarcodeFormat.UPC_E,
-                    BarcodeFormat.RSS_14,
-                    BarcodeFormat.QR_CODE,
-                    BarcodeFormat.DATA_MATRIX
-                )
-                return DefaultDecoder(hints)
-            }
-        }
+        // —— 解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
+        // 显式启用全部一维码格式（DefaultDecoderFactory 内部自带 TRY_HARDER，
+        // 对长条码、低密度、畸变条码识别率明显优于默认按场景裁剪的格式集）。
+        scanner.barcodeView.decoderFactory = DefaultDecoderFactory(
+            listOf(
+                BarcodeFormat.CODE_128,
+                BarcodeFormat.CODE_39,
+                BarcodeFormat.CODE_93,
+                BarcodeFormat.ITF,
+                BarcodeFormat.CODABAR,
+                BarcodeFormat.EAN_13,
+                BarcodeFormat.EAN_8,
+                BarcodeFormat.UPC_A,
+                BarcodeFormat.UPC_E,
+                BarcodeFormat.RSS_14,
+                BarcodeFormat.QR_CODE,
+                BarcodeFormat.DATA_MATRIX
+            )
+        )
 
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
