@@ -3,6 +3,7 @@
     <string name="btn_query">查 NMPA</string>
     <string name="btn_add">加入清单</string>
     <string name="btn_discard">丢弃</string>
+    <string name="btn_custom_dict">自定义字典</string>
     <string name="btn_export_json">导出 JSON</string>
     <string name="btn_export_csv">导出 CSV</string>
     <string name="btn_clear">清空清单</string>

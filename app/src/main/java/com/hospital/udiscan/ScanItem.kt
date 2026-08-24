@@ -49,4 +49,20 @@ data class ScanItem(
         fun nowStamp(): String =
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.CHINA).format(Date())
     }
+
+    /**
+     * 就地更新「本条清单内容」字段（批号/效期/生产/序列/数量）。
+     * 这些字段属于单条记录，不写字典、不同步其他同 UDI 条目。
+     */
+    fun updateListFields(
+        batch: String?, expiry: String?, production: String?,
+        serial: String?, serialAi: String?, quantity: Int?
+    ) {
+        batch?.let { this.batch = it.trim().let { v -> if (v.isEmpty()) null else v } }
+        expiry?.let { this.expiry = it.trim().let { v -> if (v.isEmpty()) null else v } }
+        production?.let { this.production = it.trim().let { v -> if (v.isEmpty()) null else v } }
+        serial?.let { this.serial = it.trim().let { v -> if (v.isEmpty()) null else v } }
+        serialAi?.let { this.serialAi = it }
+        quantity?.let { if (it >= 1) this.quantity = it }
+    }
 }

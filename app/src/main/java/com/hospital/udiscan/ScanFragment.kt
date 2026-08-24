@@ -260,6 +260,8 @@ class ScanFragment : Fragment() {
 
     /** 更新「本次将录入」预览卡（紧凑分行展示）。 */
     private fun updatePreviewCard() {
+        // 「自定义字典」按钮：仅扫到 UDI 才展示（粉色底白字）
+        btnEditName.visibility = if (vm.bufUdi.isNullOrEmpty()) View.GONE else View.VISIBLE
         // 来源标记：自动分辨条码/二维码
         val src = if (vm.bufSource == "qr") "📷 二维码" else "▌ 条码"
         // 数量回填（仅在用户未在编辑时同步，避免打断输入）
@@ -343,7 +345,9 @@ class ScanFragment : Fragment() {
                 if (fromOverride) local.copy(state = "local") else local
             } else {
                 val net = NmpaClient.query(udi)
-                if (net.state != "err") NmpaCache.put(udi, net)
+                // 仅「已查到(ok)」才落官方 NMPA 字典；skip/pending/err 不进官方字典。
+                // 无记录且用户后续手改时，才会进入「自定义字典」(override)。
+                if (net.state == "ok") NmpaCache.put(udi, net)
                 net
             }
             activity?.runOnUiThread {
@@ -387,6 +391,8 @@ class ScanFragment : Fragment() {
     ) {
         val ctx = requireContext()
         val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_edit_product, null)
+        // 扫码页编辑「自定义字典」：仅名称/型号/厂家，隐藏清单专属字段组
+        view.findViewById<android.view.View>(R.id.group_list_fields)?.visibility = View.GONE
         val etName = view.findViewById<android.widget.EditText>(R.id.et_name)
         val etSpec = view.findViewById<android.widget.EditText>(R.id.et_spec)
         val etCompany = view.findViewById<android.widget.EditText>(R.id.et_company)

@@ -89,7 +89,9 @@ object NmpaCache {
         } catch (e: Exception) { null }
     }
 
-    /** 写入官方缓存；state 为 ok/pending/skip 都存（skip 也存，避免反复联网查无记录）。 */
+    /** 写入官方缓存；调用方仅在 state=="ok"（NMPA 实际查到）时调用本方法。
+     *  无记录(skip)/待核对(pending)/失败(err) 一律不进官方字典，避免污染权威库；
+     *  如需保留此类条目，应在用户手动修正后写入 override（自定义字典）。 */
     fun put(udi: String, r: NmpaClient.NmpaResult) {
         val h = helper ?: return
         if (udi.isBlank()) return
