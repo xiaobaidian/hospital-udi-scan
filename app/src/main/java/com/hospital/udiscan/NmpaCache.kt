@@ -274,7 +274,7 @@ object NmpaCache {
         val out = mutableListOf<NmpaResultLite>()
         try {
             val db = h.readableDatabase
-            val c = db.query(T_CACHE, null, null, *null, null, null, "$COL_TS DESC")
+            val c = db.query(T_CACHE, null, null, null, null, null, "$COL_TS DESC")
             while (c.moveToNext()) {
                 out.add(NmpaResultLite(
                     udi = c.getString(c.getColumnIndexOrThrow(COL_UDI)),
