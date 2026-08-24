@@ -43,6 +43,7 @@ class ScanFragment : Fragment() {
     private lateinit var btnAdd: Button
     private lateinit var btnDiscard: Button
     private lateinit var btnEditName: Button
+    private lateinit var btnAccept: Button
     private lateinit var scanFlash: TextView
     private lateinit var tvLineUdi: TextView
     private lateinit var tvLineBatch: TextView
@@ -86,6 +87,7 @@ class ScanFragment : Fragment() {
         btnAdd = view.findViewById(R.id.btn_add)
         btnDiscard = view.findViewById(R.id.btn_discard)
         btnEditName = view.findViewById(R.id.btn_edit_name)
+        btnAccept = view.findViewById(R.id.btn_accept)
         scanFlash = view.findViewById(R.id.scan_flash)
         tvLineUdi = view.findViewById(R.id.tv_line_udi)
         tvLineBatch = view.findViewById(R.id.tv_line_batch)
@@ -163,6 +165,10 @@ class ScanFragment : Fragment() {
         btnEditName.setOnClickListener {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) editCurrentProduct(udi)
+        }
+        btnAccept.setOnClickListener {
+            val udi = vm.bufUdi
+            if (!udi.isNullOrEmpty()) acceptPending(udi)
         }
 
         updateBufferUi()
@@ -291,6 +297,8 @@ class ScanFragment : Fragment() {
         }
         // 「自定义字典」按钮：仅扫到 UDI 才展示（粉色底白字）
         btnEditName.visibility = if (vm.bufUdi.isNullOrEmpty()) View.GONE else View.VISIBLE
+        // 「✓ 接受候选」按钮：仅查询结果为「待核对(pending)」且已扫到 UDI 时展示
+        btnAccept.visibility = if (vm.bufUdi.isNullOrEmpty() || vm.bufNmpaState != "pending") View.GONE else View.VISIBLE
         // 来源标记：自动分辨条码/二维码
         val src = if (vm.bufSource == "qr") "📷 二维码" else "▌ 条码"
         // 数量回填（仅在用户未在编辑时同步，避免打断输入）
@@ -412,6 +420,19 @@ class ScanFragment : Fragment() {
             NmpaCache.putOverride(udi, name, spec, company)
             vm.updateAllByUdi(udi, name, spec, company)
         }
+    }
+
+    /**
+     * 接受一条「待核对(pending)」候选：把 NMPA 返回的候选名称/型号/厂家写入自定义字典（override），
+     * 不污染官方 NMPA 库；状态转为「本地字典(local)」，下次同 UDI 直接命中。
+     * 待核对结果本身不缓存（每次仍重查），仅用户的明确接受被持久化。
+     */
+    private fun acceptPending(udi: String) {
+        NmpaCache.putOverride(udi, vm.bufProduct, vm.bufSpec, vm.bufCompany)
+        vm.bufNmpaState = "local"
+        vm.updateAllByUdi(udi, vm.bufProduct, vm.bufSpec, vm.bufCompany)
+        updateBufferUi()
+        toast(R.string.toast_accepted_pending)
     }
 
     private fun showEditDialog(
