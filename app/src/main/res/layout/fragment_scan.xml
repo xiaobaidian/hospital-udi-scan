@@ -67,6 +67,23 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- 查询结果（型号/名称）醒目横条：置于待录入上方，更直观 -->
+    <TextView
+        android:id="@+id/tv_product_top"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_product_top"
+        android:gravity="center"
+        android:paddingVertical="10dp"
+        android:paddingHorizontal="12dp"
+        android:textColor="#ffffff"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <!-- 「本次将录入」实时预览卡（更醒目，独立于缓冲卡上方） -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
@@ -188,6 +205,11 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    android:padding="0dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
                     android:text="-"
                     android:textSize="18sp" />
 
@@ -206,6 +228,11 @@
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
+                    android:minWidth="40dp"
+                    android:minHeight="40dp"
+                    android:padding="0dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
                     android:text="+"
                     android:textSize="18sp" />
 
@@ -227,6 +254,11 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:paddingHorizontal="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
                     android:text="@string/btn_query" />
 
                 <Button
@@ -236,6 +268,11 @@
                     android:layout_weight="1"
                     android:layout_marginStart="6dp"
                     android:layout_marginEnd="6dp"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:paddingHorizontal="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
                     android:text="@string/btn_add"
                     android:textColor="#ffffff"
                     app:backgroundTint="@color/primary" />
@@ -246,6 +283,11 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:paddingHorizontal="6dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
                     android:text="@string/btn_discard" />
             </LinearLayout>
         </LinearLayout>

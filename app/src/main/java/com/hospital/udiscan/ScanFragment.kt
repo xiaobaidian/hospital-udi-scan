@@ -22,6 +22,12 @@ import androidx.lifecycle.ViewModelProvider
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
+import com.journeyapps.barcodescanner.DefaultDecoder
+import com.journeyapps.barcodescanner.Decoder
+import com.journeyapps.barcodescanner.DecoderFactory
+import com.journeyapps.barcodescanner.camera.CameraSettings
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.DecodeHintType
 import java.util.UUID
 
 /**
@@ -35,6 +41,7 @@ class ScanFragment : Fragment() {
     private lateinit var scanner: DecoratedBarcodeView
     private lateinit var tvBuffer: TextView
     private lateinit var tvProduct: TextView
+    private lateinit var tvProductTop: TextView
     private lateinit var tvQty: TextView
     private lateinit var btnPlus: Button
     private lateinit var btnMinus: Button
@@ -73,6 +80,7 @@ class ScanFragment : Fragment() {
         scanner = view.findViewById(R.id.barcode_scanner)
         tvBuffer = view.findViewById(R.id.tv_buffer)
         tvProduct = view.findViewById(R.id.tv_product)
+        tvProductTop = view.findViewById(R.id.tv_product_top)
         tvQty = view.findViewById(R.id.tv_qty)
         btnPlus = view.findViewById(R.id.btn_plus)
         btnMinus = view.findViewById(R.id.btn_minus)
@@ -83,6 +91,33 @@ class ScanFragment : Fragment() {
         previewChips = view.findViewById(R.id.preview_chips)
         tvPreviewQty = view.findViewById(R.id.tv_preview_qty)
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
+
+        // —— 相机/解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
+        // 1) 提高预览分辨率，长条码更清晰
+        val cs = CameraSettings()
+        cs.requestedCameraPreviewSize = android.util.Size(1920, 1080)
+        scanner.barcodeView.cameraSettings = cs
+        // 2) 显式启用全部一维码格式 + tryHarder，覆盖长条码与畸变
+        scanner.barcodeView.decoderFactory = object : DecoderFactory {
+            override fun createDecoder(hints: MutableMap<DecodeHintType, Any>): Decoder {
+                hints[DecodeHintType.TRY_HARDER] = true
+                hints[DecodeHintType.POSSIBLE_FORMATS] = listOf(
+                    BarcodeFormat.CODE_128,
+                    BarcodeFormat.CODE_39,
+                    BarcodeFormat.CODE_93,
+                    BarcodeFormat.ITF,
+                    BarcodeFormat.CODABAR,
+                    BarcodeFormat.EAN_13,
+                    BarcodeFormat.EAN_8,
+                    BarcodeFormat.UPC_A,
+                    BarcodeFormat.UPC_E,
+                    BarcodeFormat.RSS_14,
+                    BarcodeFormat.QR_CODE,
+                    BarcodeFormat.DATA_MATRIX
+                )
+                return DefaultDecoder(hints)
+            }
+        }
 
         scanner.decodeContinuous(object : BarcodeCallback {
             override fun barcodeResult(result: BarcodeResult) {
@@ -204,15 +239,24 @@ class ScanFragment : Fragment() {
             b.append("\n⚠ 待确认：").append(vm.bufPendingUnknown.joinToString(" / "))
         }
         tvBuffer.text = b.toString()
-        tvProduct.text = when (vm.bufNmpaState) {
+        // 顶部醒目横条：查询到的型号/名称优先显示在这里（更直观）
+        val topText = when (vm.bufNmpaState) {
             "ok" -> "✓ ${vm.bufProduct ?: ""}"
-            "local" -> "✎本地字典：${vm.bufProduct ?: ""}"
+            "local" -> "✎ 本地字典：${vm.bufProduct ?: ""}"
             "pending" -> "⚠ 待核对：${vm.bufProduct ?: ""}"
             "skip" -> "✗ NMPA 无记录"
             "err" -> "✗ 查询失败"
             "querying" -> "… 查询中"
             else -> vm.bufProduct ?: ""
         }
+        if (topText.isEmpty()) {
+            tvProductTop.visibility = View.GONE
+        } else {
+            tvProductTop.visibility = View.VISIBLE
+            tvProductTop.text = topText
+        }
+        // 缓冲卡内的 tvProduct 改为轻量「点此修改」提示
+        tvProduct.text = if (vm.bufNmpaState == "ok" || vm.bufNmpaState == "local") "点此改名/改型号" else ""
         tvQty.text = vm.bufQty.toString()
         updatePreviewCard()
     }
