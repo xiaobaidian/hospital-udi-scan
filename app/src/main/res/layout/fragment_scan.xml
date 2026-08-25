@@ -7,8 +7,56 @@
     android:background="@color/bg"
     android:fitsSystemWindows="true">
 
+    <!-- 模式切换：扫码 | 扫码枪 -->
+    <LinearLayout
+        android:id="@+id/mode_toggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_mode_toggle"
+        android:padding="4dp">
+
+        <Button
+            android:id="@+id/btn_mode_camera"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingHorizontal="6dp"
+            android:gravity="center"
+            android:background="@null"
+            android:drawableStart="@drawable/ic_scan"
+            android:drawablePadding="6dp"
+            android:text="@string/mode_camera"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary" />
+
+        <Button
+            android:id="@+id/btn_mode_gun"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingHorizontal="6dp"
+            android:gravity="center"
+            android:background="@null"
+            android:drawableStart="@drawable/ic_scan_gun"
+            android:drawablePadding="6dp"
+            android:text="@string/mode_gun"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary" />
+    </LinearLayout>
+
     <!-- 扫码取景 -->
     <FrameLayout
+        android:id="@+id/frame_camera"
         android:layout_width="match_parent"
         android:layout_height="240dp">
 
@@ -71,6 +119,144 @@
             android:textStyle="bold"
             android:visibility="gone" />
     </FrameLayout>
+
+    <!-- 扫码枪输入卡（仅扫码枪模式显示） -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_gun"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="@color/card"
+        app:cardElevation="4dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_scan_gun"
+                    app:tint="@color/primary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/mode_gun"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@color/primary_dark" />
+
+                <TextView
+                    android:id="@+id/tv_gun_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gun_status_wait"
+                    android:textSize="12sp"
+                    android:textColor="@color/ok" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/et_gun_input"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp"
+                android:background="@drawable/bg_qty"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:typeface="monospace"
+                android:textColor="@color/text_main"
+                android:hint="@string/gun_input_hint"
+                android:inputType="textNoSuggestions|textVisiblePassword"
+                android:importantForAutofill="no"
+                android:maxLines="1"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/gun_connect_hint"
+                android:textSize="12sp"
+                android:textColor="@color/text_sub" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 本批计数卡（仅扫码枪模式显示） -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_count"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="@color/card"
+        app:cardElevation="3dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/batch_count_title"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_sub" />
+
+                <TextView
+                    android:id="@+id/tv_batch_count"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="0"
+                    android:textSize="30sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary_dark" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_reset_count"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingHorizontal="14dp"
+                android:gravity="center"
+                android:text="@string/btn_reset_count"
+                android:textSize="13sp"
+                android:textColor="@color/primary"
+                style="@style/Widget.Material3.Button.TonalButton" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
     <!-- 查询结果（型号/名称）醒目横条：置于待录入上方，更直观 -->
     <TextView

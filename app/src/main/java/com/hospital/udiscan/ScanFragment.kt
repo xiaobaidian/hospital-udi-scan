@@ -24,6 +24,10 @@ import com.journeyapps.barcodescanner.BarcodeResult
 import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import com.journeyapps.barcodescanner.DefaultDecoderFactory
 import com.google.zxing.BarcodeFormat
+import android.content.SharedPreferences
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import java.util.UUID
 
 /**
@@ -54,6 +58,18 @@ class ScanFragment : Fragment() {
     private lateinit var cardRawDump: android.view.View
     private lateinit var tvRawDump: TextView
 
+    // —— 扫码枪模式 ——
+    private lateinit var modeToggle: android.view.View
+    private lateinit var btnModeCamera: Button
+    private lateinit var btnModeGun: Button
+    private lateinit var frameCamera: android.view.View
+    private lateinit var cardGun: android.view.View
+    private lateinit var cardCount: android.view.View
+    private lateinit var etGunInput: android.widget.EditText
+    private lateinit var tvGunStatus: TextView
+    private lateinit var tvBatchCount: TextView
+    private lateinit var btnResetCount: Button
+
     // —— 扫码闪光反馈 ——
     private var feedbackTimer: Handler? = null
 
@@ -65,6 +81,17 @@ class ScanFragment : Fragment() {
 
     private val camPerm = Manifest.permission.CAMERA
     private val rcCam = 1001
+
+    companion object {
+        const val MODE_CAMERA = 0
+        const val MODE_GUN = 1
+        const val PREF_MODE = "scan_mode"
+    }
+
+    private lateinit var prefs: SharedPreferences
+    private var scanMode = MODE_CAMERA
+    private var batchCount = 0
+    private var gunStatusTimer: Handler? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: android.view.ViewGroup?,
@@ -97,6 +124,21 @@ class ScanFragment : Fragment() {
         tvPreviewHint = view.findViewById(R.id.tv_preview_hint)
         cardRawDump = view.findViewById(R.id.card_raw_dump)
         tvRawDump = view.findViewById(R.id.tv_raw_dump)
+
+        // —— 扫码枪模式：视图绑定 + 状态读取 ——
+        modeToggle = view.findViewById(R.id.mode_toggle)
+        btnModeCamera = view.findViewById(R.id.btn_mode_camera)
+        btnModeGun = view.findViewById(R.id.btn_mode_gun)
+        frameCamera = view.findViewById(R.id.frame_camera)
+        cardGun = view.findViewById(R.id.card_gun)
+        cardCount = view.findViewById(R.id.card_count)
+        etGunInput = view.findViewById(R.id.et_gun_input)
+        tvGunStatus = view.findViewById(R.id.tv_gun_status)
+        tvBatchCount = view.findViewById(R.id.tv_batch_count)
+        btnResetCount = view.findViewById(R.id.btn_reset_count)
+
+        prefs = requireContext().getSharedPreferences("udi_scan_prefs", 0)
+        scanMode = prefs.getInt(PREF_MODE, MODE_CAMERA)
 
         // —— 解码参数调优：提升长条码（GS1-128/Code128 高密度）识别率 ——
         // 显式启用全部一维码格式（DefaultDecoderFactory 内部自带 TRY_HARDER，
@@ -171,12 +213,36 @@ class ScanFragment : Fragment() {
             if (!udi.isNullOrEmpty()) acceptPending(udi)
         }
 
-        updateBufferUi()
+        btnModeCamera.setOnClickListener { setMode(MODE_CAMERA) }
+        btnModeGun.setOnClickListener { setMode(MODE_GUN) }
+        btnResetCount.setOnClickListener { batchCount = 0; updateBatchCountUi() }
+
+        // 扫码枪接收框：扫码枪是 HID 键盘，把 GS1 码当快速输入敲入；
+        // 绝大多数以回车(Enter)作结束符，部分发 IME_NULL，两者都接。
+        etGunInput.showSoftInputOnFocus = false
+        etGunInput.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
+                handleGunInput()
+                true
+            } else false
+        }
+        etGunInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_NULL) { handleGunInput(); true } else false
+        }
+
+        applyMode()
     }
 
     override fun onResume() {
         super.onResume()
-        ensureCamera()
+        if (scanMode == MODE_GUN) {
+            // 扫码枪模式：不启相机、不请求相机权限，聚焦接收框并隐藏软键盘
+            scanner.pause()
+            etGunInput.requestFocus()
+            hideSoftKeyboard()
+        } else {
+            ensureCamera()
+        }
     }
 
     override fun onPause() {
@@ -204,6 +270,11 @@ class ScanFragment : Fragment() {
             return
         }
         beep()
+        // 扫码枪模式下，每成功识别一件即计入「本批计数」
+        if (scanMode == MODE_GUN) {
+            batchCount++
+            updateBatchCountUi()
+        }
 
         // 记录本次来源（条码 / 二维码），供缓冲卡显示
         vm.bufSource = if (isQr) "qr" else "barcode"
@@ -285,14 +356,19 @@ class ScanFragment : Fragment() {
 
     /** 更新「本次将录入」预览卡（紧凑分行展示）。 */
     private fun updatePreviewCard() {
-        // 解析前拼接的原始扫码串卡片：扫码前隐藏，扫到码再展示；按 UDI 优先排序
-        val dump = vm.rawDumpSorted()
-        if (dump.isEmpty()) {
+        // 原始串卡片：扫码枪模式不需要（枪为字符级精确输入，接收框即回显）；
+        // 相机模式按 UDI 优先排序展示拼接前的原始串
+        if (scanMode == MODE_GUN) {
             cardRawDump.visibility = View.GONE
         } else {
-            cardRawDump.visibility = View.VISIBLE
-            tvRawDump.text = dump.joinToString("\n") { (raw, hasUdi) ->
-                if (hasUdi) "★ $raw" else "· $raw"
+            val dump = vm.rawDumpSorted()
+            if (dump.isEmpty()) {
+                cardRawDump.visibility = View.GONE
+            } else {
+                cardRawDump.visibility = View.VISIBLE
+                tvRawDump.text = dump.joinToString("\n") { (raw, hasUdi) ->
+                    if (hasUdi) "★ $raw" else "· $raw"
+                }
             }
         }
         // 「自定义字典」按钮：仅扫到 UDI 才展示（粉色底白字）
@@ -490,6 +566,63 @@ class ScanFragment : Fragment() {
         } else if (requestCode == rcCam) {
             toast(R.string.toast_no_camera)
         }
+    }
+
+    // ——— 扫码枪模式：切换 / 应用 / 枪输入处理 ———
+    private fun setMode(m: Int) {
+        if (m == scanMode) return
+        scanMode = m
+        prefs.edit().putInt(PREF_MODE, m).apply()
+        applyMode()
+        if (m == MODE_CAMERA) ensureCamera()
+    }
+
+    private fun applyMode() {
+        val gun = scanMode == MODE_GUN
+        // 相机取景区 ↔ 扫码枪输入卡 互斥显示
+        frameCamera.visibility = if (gun) View.GONE else View.VISIBLE
+        cardGun.visibility = if (gun) View.VISIBLE else View.GONE
+        cardCount.visibility = if (gun) View.VISIBLE else View.GONE
+        styleToggle()
+        if (gun) scanner.pause() // 切到枪模式即停相机、释放摄像头
+        updateBatchCountUi()
+        updateBufferUi() // 同步预览卡 / 原始串卡片的可见性（受模式影响）
+    }
+
+    /** 分段切换按钮的选中态样式（选中=蓝底白字，未选=透明蓝字）。 */
+    private fun styleToggle() {
+        val gun = scanMode == MODE_GUN
+        btnModeCamera.setBackgroundResource(if (gun) 0 else R.drawable.bg_mode_selected)
+        btnModeGun.setBackgroundResource(if (gun) R.drawable.bg_mode_selected else 0)
+        val sel = ContextCompat.getColor(requireContext(), android.R.color.white)
+        val unsel = ContextCompat.getColor(requireContext(), R.color.primary)
+        btnModeCamera.setTextColor(if (gun) unsel else sel)
+        btnModeGun.setTextColor(if (gun) sel else unsel)
+    }
+
+    /** 扫码枪以回车结束输入：取接收框全文 → 立即清空（防下次拼接）→ 复用 onScanned 解析。 */
+    private fun handleGunInput() {
+        val raw = etGunInput.text.toString().trim()
+        etGunInput.setText("")
+        if (raw.isEmpty()) return
+        tvGunStatus.text = getString(R.string.gun_status_received)
+        tvGunStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.ok))
+        gunStatusTimer?.removeCallbacksAndMessages(null)
+        gunStatusTimer = Handler(Looper.getMainLooper()).apply {
+            postDelayed({
+                if (scanMode == MODE_GUN) tvGunStatus.text = getString(R.string.gun_status_wait)
+            }, 1500)
+        }
+        onScanned(raw, false)
+    }
+
+    private fun updateBatchCountUi() {
+        tvBatchCount.text = batchCount.toString()
+    }
+
+    private fun hideSoftKeyboard() {
+        val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(etGunInput.windowToken, 0)
     }
 
     private fun toast(resId: Int) = Toast.makeText(requireContext(), resId, Toast.LENGTH_SHORT).show()

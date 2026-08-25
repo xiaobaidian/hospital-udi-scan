@@ -100,7 +100,7 @@ jobs:
         with:
           artifacts: "app/build/outputs/apk/debug/app-debug.apk"
           tag: debug-latest
-          name: UDI 扫码盘点 App (debug) 最新版
+          name: UDI SCAN (debug) 最新版
           body: "自动构建的最新 debug 版（Kotlin + zxing-android-embedded + 自写 GS1 解析 + NMPA 正向查询）。"
           allowUpdates: true
           replacesArtifacts: true

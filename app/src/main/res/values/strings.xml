@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">UDI 扫码盘点</string>
+    <string name="app_name">UDI SCAN</string>
     <string name="btn_query">查 NMPA</string>
     <string name="btn_add">加入清单</string>
     <string name="btn_discard">丢弃</string>
@@ -61,4 +61,14 @@
     <string name="toast_saved_all">已保存到字典并同步 %1$d 条同 UDI 记录</string>
     <string name="toast_list_empty">清单为空，无法导出</string>
     <string name="perm_rationale">需要相机权限才能扫码</string>
+
+    <!-- 扫码枪模式 -->
+    <string name="mode_camera">扫码</string>
+    <string name="mode_gun">扫码枪</string>
+    <string name="gun_input_hint">将扫码枪对准条码，扫完自动录入</string>
+    <string name="gun_status_wait">就绪 · 等待扫码枪输入</string>
+    <string name="gun_status_received">✓ 已收到输入</string>
+    <string name="gun_connect_hint">蓝牙枪请先在系统蓝牙配对；USB 枪插上即用（免驱动）</string>
+    <string name="batch_count_title">本批已扫</string>
+    <string name="btn_reset_count">重置计数</string>
 </resources>

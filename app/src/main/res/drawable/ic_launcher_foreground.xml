@@ -1,0 +1,28 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 扫码枪：放大居中到 108 画布的安全区（约 72dp） -->
+    <group
+        android:scale="4.5"
+        android:translateX="-2.25"
+        android:translateY="-2.25">
+        <!-- 斜手柄 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M4,20 L10,14 L12.6,16.6 L6.6,22 Z" />
+        <!-- 机身 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M11,3 H19 a2,2 0 0 1 2,2 V10 a2,2 0 0 1 -2,2 H11 a2,2 0 0 1 -2,-2 V5 a2,2 0 0 1 2,-2 Z" />
+        <!-- 扫描光（琥珀） -->
+        <path
+            android:fillColor="#FFB300"
+            android:pathData="M15,9.6 L12,13 H18 Z" />
+        <!-- 镜头 -->
+        <path
+            android:fillColor="#BBDEFB"
+            android:pathData="M13.2,6.5 a1.8,1.8 0 1 0 3.6,0 a1.8,1.8 0 1 0 -3.6,0 Z" />
+    </group>
+</vector>
