@@ -54,11 +54,12 @@
             android:textColor="@color/primary" />
     </LinearLayout>
 
-    <!-- 扫码取景 -->
+    <!-- 扫码取景（下移 12dp，与顶部切换条留间距，避免贴边） -->
     <FrameLayout
         android:id="@+id/frame_camera"
         android:layout_width="match_parent"
-        android:layout_height="240dp">
+        android:layout_height="240dp"
+        android:layout_marginTop="12dp">
 
         <com.journeyapps.barcodescanner.DecoratedBarcodeView
             android:id="@+id/barcode_scanner"
@@ -173,19 +174,24 @@
             <EditText
                 android:id="@+id/et_gun_input"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="132dp"
                 android:layout_marginTop="10dp"
-                android:gravity="center_vertical"
+                android:gravity="top|start"
                 android:paddingHorizontal="12dp"
+                android:paddingVertical="10dp"
                 android:background="@drawable/bg_qty"
-                android:textSize="18sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
                 android:typeface="monospace"
                 android:textColor="@color/text_main"
                 android:hint="@string/gun_input_hint"
-                android:inputType="textNoSuggestions|textVisiblePassword"
+                android:inputType="textMultiLine|textNoSuggestions|textVisiblePassword"
                 android:importantForAutofill="no"
-                android:maxLines="1"
+                android:minLines="3"
+                android:maxLines="8"
+                android:scrollbars="vertical"
+                android:fadeScrollbars="false"
+                android:scrollHorizontally="false"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
 
@@ -199,9 +205,9 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- 本批计数卡（仅扫码枪模式显示） -->
+    <!-- 扫码枪操作卡：解析 + 清空（仅扫码枪模式显示） -->
     <androidx.cardview.widget.CardView
-        android:id="@+id/card_count"
+        android:id="@+id/card_gun_ops"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -215,46 +221,76 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:orientation="vertical"
             android:padding="12dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_scan_gun"
+                    app:tint="@color/primary" />
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/batch_count_title"
-                    android:textSize="13sp"
-                    android:textColor="@color/text_sub" />
-
-                <TextView
-                    android:id="@+id/tv_batch_count"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="0"
-                    android:textSize="30sp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/mode_gun"
                     android:textStyle="bold"
+                    android:textSize="14sp"
                     android:textColor="@color/primary_dark" />
+
+                <TextView
+                    android:id="@+id/tv_gun_lines"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/gun_lines_format"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_sub" />
             </LinearLayout>
 
-            <Button
-                android:id="@+id/btn_reset_count"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingHorizontal="14dp"
-                android:gravity="center"
-                android:text="@string/btn_reset_count"
-                android:textSize="13sp"
-                android:textColor="@color/primary"
-                style="@style/Widget.Material3.Button.TonalButton" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_gun_parse"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:includeFontPadding="false"
+                    android:gravity="center"
+                    android:text="@string/btn_gun_parse"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    app:backgroundTint="@color/primary" />
+
+                <Button
+                    android:id="@+id/btn_gun_clear"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:minHeight="44dp"
+                    android:includeFontPadding="false"
+                    android:gravity="center"
+                    android:text="@string/btn_gun_clear"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/pending" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
@@ -567,6 +603,8 @@
                     android:layout_weight="1"
                     android:minWidth="0dp"
                     android:minHeight="44dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:paddingHorizontal="6dp"
                     android:gravity="center"
                     android:includeFontPadding="false"
@@ -579,7 +617,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:minWidth="0dp"
                     android:minHeight="44dp"
                     android:paddingHorizontal="6dp"
@@ -595,6 +634,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:minWidth="0dp"
                     android:minHeight="44dp"
                     android:paddingHorizontal="6dp"

@@ -71,4 +71,10 @@
     <string name="gun_connect_hint">蓝牙枪请先在系统蓝牙配对；USB 枪插上即用（免驱动）</string>
     <string name="batch_count_title">本批已扫</string>
     <string name="btn_reset_count">重置计数</string>
+
+    <!-- 扫码枪录入卡（解析 / 清空） -->
+    <string name="btn_gun_parse">解析</string>
+    <string name="btn_gun_clear">清空</string>
+    <string name="gun_input_hint">将扫码枪对准条码，逐行扫入（支持多行合并，可手动改字纠错）</string>
+    <string name="gun_lines_format">已录入 %1$d 行</string>
 </resources>

@@ -75,87 +75,139 @@ class DictActivity : AppCompatActivity() {
         }
     }
 
-    /** 单条字典行：UDI + 名称 + 型号/厂家 + 状态；自定义可编辑/删除。 */
+    /**
+     * 单条字典行（卡片化）：
+     * - 左侧色条区分来源（NMPA 蓝 / 自定义 紫），整行浅色背景呼应；
+     * - 型号(规格)作 headline 醒目显示，名称/UDI 退为次要信息；
+     * - 状态为 ok 时隐藏；自定义以「自定义」标签显示；
+     * - 删除按钮固定右侧，编辑(自定义)也在右侧。
+     */
     private fun addRow(
         udi: String, name: String?, spec: String?, company: String?, state: String, editable: Boolean
     ) {
-        val card = LayoutInflater.from(this)
-            .inflate(android.R.layout.simple_list_item_1, listContainer, false) as TextView
-        // 用 CardView 包装更美观
         val ctx = this
+        val density = resources.displayMetrics.density
+        val dp = { v: Int -> (v * density).toInt() }
+
+        // 来源配色：NMPA=蓝，自定义=紫
+        val accent = if (editable) 0xFF7B1FA2.toInt() else 0xFF1565C0.toInt()
+        val bgTint = if (editable) 0xFFF3E5F5.toInt() else 0xFFE3F2FD.toInt()
+
         val row = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(12, 10, 12, 10)
-            setBackgroundColor(0xFFFFFFFF.toInt())
-            val params = LinearLayout.LayoutParams(
+            orientation = LinearLayout.HORIZONTAL
+            setBackgroundColor(bgTint)
+            val p = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            params.bottomMargin = 8
-            layoutParams = params
+            p.bottomMargin = dp(8)
+            layoutParams = p
         }
-        val title = TextView(ctx).apply {
-            text = (name ?: "（无名称）") + "  ·  UDI $udi"
-            textSize = 14f
+
+        // 左侧色条
+        val bar = android.view.View(ctx).apply { setBackgroundColor(accent) }
+        bar.layoutParams = LinearLayout.LayoutParams(dp(5), LinearLayout.LayoutParams.MATCH_PARENT)
+
+        // 内容列（占满剩余宽度）
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(10), dp(8), dp(10))
+        }
+        col.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+        // 型号(规格)作为 headline，最醒目；无型号时回退到名称
+        val modelText = spec?.takeIf { it.isNotBlank() } ?: (name ?: "（无名称）")
+        val model = TextView(ctx).apply {
+            text = modelText
+            textSize = 15f
             setTextColor(0xFF212121.toInt())
             setTextStyleBold()
         }
-        val sub = TextView(ctx).apply {
-            val parts = mutableListOf<String>()
-            spec?.let { parts.add("型号:$it") }
-            company?.let { parts.add("厂家:$it") }
-            parts.add("状态:$state")
-            text = parts.joinToString("   ")
+        col.addView(model)
+
+        // 有型号时，名称作为次要行单独显示
+        if (!spec.isNullOrBlank() && !name.isNullOrBlank()) {
+            val nameTv = TextView(ctx).apply {
+                text = name
+                textSize = 13f
+                setTextColor(0xFF616161.toInt())
+                setPadding(0, 2, 0, 0)
+            }
+            col.addView(nameTv)
+        }
+
+        // UDI（等宽字体）
+        val udiTv = TextView(ctx).apply {
+            text = "UDI $udi"
             textSize = 12f
             setTextColor(0xFF757575.toInt())
             setPadding(0, 4, 0, 0)
+            typeface = android.graphics.Typeface.MONOSPACE
         }
-        row.addView(title)
-        row.addView(sub)
+        col.addView(udiTv)
+
+        // 状态：ok 不显示；自定义 →「自定义」；其余按语义显示
+        if (state != "ok") {
+            val stateLabel = when (state) {
+                "custom" -> "自定义"
+                "pending" -> "待核对"
+                "skip" -> "无记录"
+                "err" -> "查询失败"
+                "local" -> "本地"
+                else -> state
+            }
+            val stateTv = TextView(ctx).apply {
+                text = stateLabel
+                textSize = 11f
+                setTextColor(accent)
+                setPadding(0, 4, 0, 0)
+                setTextStyleBold()
+            }
+            col.addView(stateTv)
+        }
+
+        // 官方数据提示（不占右侧按钮区，放内容列底部）
+        if (!editable) {
+            val note = TextView(ctx).apply {
+                text = "官方数据，不可编辑；改名请用「自定义字典」覆盖"
+                textSize = 11f
+                setTextColor(0xFF9E9E9E.toInt())
+                setPadding(0, 4, 0, 0)
+            }
+            col.addView(note)
+        }
+
+        // 右侧操作区：编辑(自定义) + 删除，靠右排列
+        val actions = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.END
+            setPadding(dp(4), dp(6), dp(10), dp(6))
+        }
+        actions.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        )
 
         if (editable) {
-            val actions = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, 8, 0, 0)
-            }
             val btnEdit = Button(ctx).apply {
                 text = "编辑"
                 textSize = 12f
                 setMinDp(56, 32)
                 setOnClickListener { editEntry(udi) }
             }
-            val btnDel = Button(ctx).apply {
-                text = "删除"
-                textSize = 12f
-                setMinDp(56, 32)
-                setTextColor(0xFFC62828.toInt())
-                setOnClickListener { deleteEntry(udi) }
-            }
             actions.addView(btnEdit)
-            actions.addView(btnDel)
-            row.addView(actions)
-        } else {
-            val actions = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, 8, 0, 0)
-            }
-            val btnDel = Button(ctx).apply {
-                text = "删除"
-                textSize = 12f
-                setMinDp(56, 32)
-                setTextColor(0xFFC62828.toInt())
-                setOnClickListener { deleteNmpaEntry(udi) }
-            }
-            actions.addView(btnDel)
-            val note = TextView(ctx).apply {
-                text = "（官方数据，不可编辑；如需改名请用「自定义字典」覆盖）"
-                textSize = 11f
-                setTextColor(0xFF9E9E9E.toInt())
-                setPadding(8, 0, 0, 0)
-            }
-            actions.addView(note)
-            row.addView(actions)
         }
+        val btnDel = Button(ctx).apply {
+            text = "删除"
+            textSize = 12f
+            setMinDp(56, 32)
+            setTextColor(0xFFC62828.toInt())
+            setOnClickListener { if (editable) deleteEntry(udi) else deleteNmpaEntry(udi) }
+        }
+        actions.addView(btnDel)
+
+        row.addView(bar)
+        row.addView(col)
+        row.addView(actions)
         listContainer.addView(row)
     }
 

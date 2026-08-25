@@ -25,9 +25,8 @@ import com.journeyapps.barcodescanner.DecoratedBarcodeView
 import com.journeyapps.barcodescanner.DefaultDecoderFactory
 import com.google.zxing.BarcodeFormat
 import android.content.SharedPreferences
-import android.view.KeyEvent
-import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.text.TextWatcher
 import java.util.UUID
 
 /**
@@ -64,11 +63,12 @@ class ScanFragment : Fragment() {
     private lateinit var btnModeGun: Button
     private lateinit var frameCamera: android.view.View
     private lateinit var cardGun: android.view.View
-    private lateinit var cardCount: android.view.View
+    private lateinit var cardGunOps: android.view.View
     private lateinit var etGunInput: android.widget.EditText
     private lateinit var tvGunStatus: TextView
-    private lateinit var tvBatchCount: TextView
-    private lateinit var btnResetCount: Button
+    private lateinit var tvGunLines: TextView
+    private lateinit var btnGunParse: Button
+    private lateinit var btnGunClear: Button
 
     // —— 扫码闪光反馈 ——
     private var feedbackTimer: Handler? = null
@@ -90,8 +90,9 @@ class ScanFragment : Fragment() {
 
     private lateinit var prefs: SharedPreferences
     private var scanMode = MODE_CAMERA
-    private var batchCount = 0
     private var gunStatusTimer: Handler? = null
+    private val gunHandler = Handler(Looper.getMainLooper())
+    private val gunReparseRunnable = Runnable { reparseGun() }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: android.view.ViewGroup?,
@@ -131,11 +132,12 @@ class ScanFragment : Fragment() {
         btnModeGun = view.findViewById(R.id.btn_mode_gun)
         frameCamera = view.findViewById(R.id.frame_camera)
         cardGun = view.findViewById(R.id.card_gun)
-        cardCount = view.findViewById(R.id.card_count)
+        cardGunOps = view.findViewById(R.id.card_gun_ops)
         etGunInput = view.findViewById(R.id.et_gun_input)
         tvGunStatus = view.findViewById(R.id.tv_gun_status)
-        tvBatchCount = view.findViewById(R.id.tv_batch_count)
-        btnResetCount = view.findViewById(R.id.btn_reset_count)
+        tvGunLines = view.findViewById(R.id.tv_gun_lines)
+        btnGunParse = view.findViewById(R.id.btn_gun_parse)
+        btnGunClear = view.findViewById(R.id.btn_gun_clear)
 
         prefs = requireContext().getSharedPreferences("udi_scan_prefs", 0)
         scanMode = prefs.getInt(PREF_MODE, MODE_CAMERA)
@@ -197,7 +199,13 @@ class ScanFragment : Fragment() {
             val udi = vm.bufUdi
             if (!udi.isNullOrEmpty()) queryNmpa(udi) else toast(R.string.toast_no_udi)
         }
-        btnAdd.setOnClickListener { commitBuffer(); updateBufferUi() }
+        btnAdd.setOnClickListener {
+            commitBuffer(); updateBufferUi()
+            if (scanMode == MODE_GUN) {
+                etGunInput.setText("")
+                updateGunLinesUi()
+            }
+        }
         btnDiscard.setOnClickListener {
             vm.clearBuffer()
             updateBufferUi()
@@ -215,20 +223,24 @@ class ScanFragment : Fragment() {
 
         btnModeCamera.setOnClickListener { setMode(MODE_CAMERA) }
         btnModeGun.setOnClickListener { setMode(MODE_GUN) }
-        btnResetCount.setOnClickListener { batchCount = 0; updateBatchCountUi() }
+        btnGunParse.setOnClickListener { reparseGun() }
+        btnGunClear.setOnClickListener {
+            etGunInput.setText("")
+            reparseGun()
+            updateGunLinesUi()
+            toast(R.string.toast_discarded)
+        }
 
-        // 扫码枪接收框：扫码枪是 HID 键盘，把 GS1 码当快速输入敲入；
-        // 绝大多数以回车(Enter)作结束符，部分发 IME_NULL，两者都接。
+        // 扫码枪接收框：HID 键盘把 GS1 码当快速键盘输入逐字敲入，通常一次扫入一行（以回车结尾）。
+        // 多行可编辑：支持同一产品两行条码分两次扫、手动改字纠错；去抖 500ms 后自动重新解析。
         etGunInput.showSoftInputOnFocus = false
-        etGunInput.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
-                handleGunInput()
-                true
-            } else false
-        }
-        etGunInput.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_NULL) { handleGunInput(); true } else false
-        }
+        etGunInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(editable: android.text.Editable?) {
+                scheduleGunReparse()
+            }
+        })
 
         applyMode()
     }
@@ -270,11 +282,6 @@ class ScanFragment : Fragment() {
             return
         }
         beep()
-        // 扫码枪模式下，每成功识别一件即计入「本批计数」
-        if (scanMode == MODE_GUN) {
-            batchCount++
-            updateBatchCountUi()
-        }
 
         // 记录本次来源（条码 / 二维码），供缓冲卡显示
         vm.bufSource = if (isQr) "qr" else "barcode"
@@ -582,11 +589,10 @@ class ScanFragment : Fragment() {
         // 相机取景区 ↔ 扫码枪输入卡 互斥显示
         frameCamera.visibility = if (gun) View.GONE else View.VISIBLE
         cardGun.visibility = if (gun) View.VISIBLE else View.GONE
-        cardCount.visibility = if (gun) View.VISIBLE else View.GONE
+        cardGunOps.visibility = if (gun) View.VISIBLE else View.GONE
         styleToggle()
         if (gun) scanner.pause() // 切到枪模式即停相机、释放摄像头
-        updateBatchCountUi()
-        updateBufferUi() // 同步预览卡 / 原始串卡片的可见性（受模式影响）
+        if (gun) reparseGun() else updateBufferUi() // 同步预览卡 / 原始串卡片的可见性（受模式影响）
     }
 
     /** 分段切换按钮的选中态样式（选中=蓝底白字，未选=透明蓝字）。 */
@@ -600,24 +606,76 @@ class ScanFragment : Fragment() {
         btnModeGun.setTextColor(if (gun) sel else unsel)
     }
 
-    /** 扫码枪以回车结束输入：取接收框全文 → 立即清空（防下次拼接）→ 复用 onScanned 解析。 */
-    private fun handleGunInput() {
-        val raw = etGunInput.text.toString().trim()
-        etGunInput.setText("")
-        if (raw.isEmpty()) return
-        tvGunStatus.text = getString(R.string.gun_status_received)
-        tvGunStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.ok))
-        gunStatusTimer?.removeCallbacksAndMessages(null)
-        gunStatusTimer = Handler(Looper.getMainLooper()).apply {
-            postDelayed({
-                if (scanMode == MODE_GUN) tvGunStatus.text = getString(R.string.gun_status_wait)
-            }, 1500)
-        }
-        onScanned(raw, false)
+    /** 扫码枪接收框防抖：500ms 内无新输入才重新解析（兼容枪快速敲入 + 手动改字）。 */
+    private fun scheduleGunReparse() {
+        gunHandler.removeCallbacks(gunReparseRunnable)
+        gunHandler.postDelayed(gunReparseRunnable, 500)
     }
 
-    private fun updateBatchCountUi() {
-        tvBatchCount.text = batchCount.toString()
+    /** 把接收框全文解析为预览：预处理 → 填缓冲 → 刷新预览卡 → 自动查 NMPA。 */
+    private fun reparseGun() {
+        val lines = preprocessGunLines(etGunInput.text.toString())
+        updateGunLinesUi()
+        if (lines.isEmpty()) {
+            vm.clearBuffer()
+            updateBufferUi()
+            tvGunStatus.text = getString(R.string.gun_status_wait)
+            tvGunStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_sub))
+            return
+        }
+        tvGunStatus.text = getString(R.string.gun_status_received)
+        tvGunStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.ok))
+        val combined = lines.joinToString("\n")
+        val parsed = Gs1Parser.parse(combined, alreadyHasUdi = false)
+        val prevQueried = vm.queriedUdi
+        vm.clearBuffer()
+        for (f in parsed.fields) {
+            when (f.type) {
+                Gs1Parser.FieldType.UDI ->
+                    if (vm.bufUdi == null) vm.bufUdi = f.value
+                Gs1Parser.FieldType.BATCH ->
+                    if (vm.bufBatch == null) vm.bufBatch = f.value
+                Gs1Parser.FieldType.EXPIRY ->
+                    if (vm.bufExpiry == null) vm.bufExpiry = f.value
+                Gs1Parser.FieldType.PROD_DATE ->
+                    if (vm.bufProduction == null) vm.bufProduction = f.value
+                Gs1Parser.FieldType.SERIAL ->
+                    if (vm.bufSerial == null) { vm.bufSerial = f.value; vm.bufSerialAi = f.ai ?: "21" }
+                Gs1Parser.FieldType.UNKNOWN -> Unit
+            }
+        }
+        val unknowns = parsed.fields.filter { it.type == Gs1Parser.FieldType.UNKNOWN }
+        if (unknowns.isNotEmpty()) vm.bufPendingUnknown = unknowns.map { it.value }
+        updateBufferUi()
+        val udi = vm.bufUdi
+        if (!udi.isNullOrEmpty() && udi != prevQueried) {
+            vm.queriedUdi = udi
+            queryNmpa(udi)
+        }
+    }
+
+    /** 解析前预处理：① 去掉与已有内容重复的整行；② 若首行非 UDI(01)，自动把含 (01) 的行提前。 */
+    private fun preprocessGunLines(raw: String): List<String> {
+        val lines = raw.lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toList()
+        val seen = LinkedHashSet<String>()
+        for (l in lines) seen.add(l)
+        val dedup = seen.toList()
+        val udiIdx = dedup.indexOfFirst { isUdiLine(it) }
+        return if (udiIdx > 0) {
+            val udiLine = dedup[udiIdx]
+            listOf(udiLine) + dedup.filterIndexed { i, _ -> i != udiIdx }
+        } else dedup
+    }
+
+    /** 判断一行是否以 UDI(01) 开头：含 (01)+14 位 GTIN，或整行 14 位数字（部分枪剥离括号）。 */
+    private fun isUdiLine(line: String): Boolean {
+        if (Regex("""\(01\)\d{14}""").containsMatchIn(line)) return true
+        return Regex("""^\d{14}$""").matches(line.trim())
+    }
+
+    private fun updateGunLinesUi() {
+        val n = etGunInput.text.toString().lineSequence().count { it.isNotBlank() }
+        tvGunLines.text = getString(R.string.gun_lines_format, n)
     }
 
     private fun hideSoftKeyboard() {
