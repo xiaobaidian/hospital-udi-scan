@@ -33,6 +33,8 @@
     <string name="menu_import_custom_sub">从文件合并 UDI 手改记录</string>
     <string name="menu_import_nmpa">导入 NMPA 字典</string>
     <string name="menu_import_nmpa_sub">从文件合并官方缓存记录</string>
+    <string name="menu_restore_preset">恢复内置预设</string>
+    <string name="menu_restore_preset_sub">将打包的 UDI 预设字典重新灌入 NMPA 字典</string>
     <string name="menu_dict">查看字典</string>
     <string name="menu_dict_sub">查看 / 编辑 NMPA 与自定义字典</string>
     <string name="menu_clear_nmpa">清空 NMPA 字典库</string>

@@ -29,6 +29,7 @@ class ManageActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.menu_export_custom).setOnClickListener { exportCustom() }
         findViewById<android.view.View>(R.id.menu_import_custom).setOnClickListener { importFile(rcImportCustom) }
         findViewById<android.view.View>(R.id.menu_import_nmpa).setOnClickListener { importFile(rcImportNmpa) }
+        findViewById<android.view.View>(R.id.menu_restore_preset).setOnClickListener { restorePreset() }
         findViewById<android.view.View>(R.id.menu_dict).setOnClickListener {
             startActivity(Intent(this, DictActivity::class.java))
         }
@@ -155,6 +156,14 @@ class ManageActivity : AppCompatActivity() {
             }
             val where = if (isNmpa) "NMPA" else "自定义"
             runOnUiThread { toast("已导入 $where 字典 $n 条") }
+        }.start()
+    }
+
+    // ——— 恢复内置预设（从 assets/nmpa_preset.json 灌入 NMPA 字典）———
+    private fun restorePreset() {
+        Thread {
+            val n = NmpaCache.importPresetFromAssets(this)
+            runOnUiThread { toast("已恢复内置预设 $n 条") }
         }.start()
     }
 

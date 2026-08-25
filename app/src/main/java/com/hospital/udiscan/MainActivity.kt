@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         NmpaCache.init(this)
+        NmpaCache.seedPresetOnFirstLaunch(this)
 
         pager = findViewById(R.id.pager)
         tabScan = findViewById(R.id.tab_scan)

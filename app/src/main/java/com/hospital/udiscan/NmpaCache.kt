@@ -297,6 +297,39 @@ object NmpaCache {
         try { h.writableDatabase.delete(T_CACHE, "$COL_UDI = ?", arrayOf(udi)) } catch (_: Exception) {}
     }
 
+    /** 从 assets/nmpa_preset.json 灌入官方缓存(T_CACHE)。幂等(CONFLICT_REPLACE)。
+     *  返回成功写入条数；assets 缺失/解析失败返回 0（不抛异常）。 */
+    fun importPresetFromAssets(context: Context): Int {
+        val am = context.applicationContext.assets
+        val text = try {
+            am.open("nmpa_preset.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (e: Exception) { return 0 }
+        val arr = try { JSONArray(text) } catch (e: Exception) { return 0 }
+        if (arr.length() == 0) return 0
+        val items = mutableListOf<CacheEntry>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            items.add(CacheEntry(
+                udi = o.optString("udi", ""),
+                name = o.optString("name", "").let { if (it.isEmpty()) null else it },
+                spec = o.optString("spec", "").let { if (it.isEmpty()) null else it },
+                company = o.optString("company", "").let { if (it.isEmpty()) null else it },
+                state = o.optString("state", "ok").let { if (it.isEmpty()) "ok" else it }
+            ))
+        }
+        return importCache(items)
+    }
+
+    /** 首次启动自动灌预设：用 SharedPreferences 标记，仅跑一次(或 preset 版本变化时)。
+     *  version 递增即可在下次启动重新全量灌入。 */
+    fun seedPresetOnFirstLaunch(context: Context, version: Int = 1) {
+        val ctx = context.applicationContext
+        val sp = ctx.getSharedPreferences("udi_preset_seed", Context.MODE_PRIVATE)
+        if (sp.getInt("seeded_version", 0) >= version) return
+        importPresetFromAssets(ctx)
+        sp.edit().putInt("seeded_version", version).apply()
+    }
+
     data class CacheEntry(
         val udi: String,
         val name: String?,
