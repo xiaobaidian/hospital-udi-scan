@@ -5,7 +5,8 @@
     android:viewportHeight="108">
     <!-- 扫码枪：放大居中到 108 画布的安全区（约 72dp） -->
     <group
-        android:scale="4.5"
+        android:scaleX="4.5"
+        android:scaleY="4.5"
         android:translateX="-2.25"
         android:translateY="-2.25">
         <!-- 斜手柄 -->
