@@ -233,7 +233,16 @@ class ScanFragment : Fragment() {
 
         // 扫码枪接收框：HID 键盘把 GS1 码当快速键盘输入逐字敲入，通常一次扫入一行（以回车结尾）。
         // 多行可编辑：支持同一产品两行条码分两次扫、手动改字纠错；去抖 500ms 后自动重新解析。
+        // 软键盘策略：扫描枪是物理 HID 输入，默认不自动弹软键盘（showSoftInputOnFocus=false），
+        // 避免遮挡扫码；但允许用户【点击输入框】手动弹键盘改字纠错（见 onTouch 显式 showSoftInput）。
         etGunInput.showSoftInputOnFocus = false
+        etGunInput.setOnTouchListener { _, _ ->
+            if (!etGunInput.isFocused) etGunInput.requestFocus()
+            val imm = requireContext()
+                .getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(etGunInput, InputMethodManager.SHOW_IMPLICIT)
+            false
+        }
         etGunInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}

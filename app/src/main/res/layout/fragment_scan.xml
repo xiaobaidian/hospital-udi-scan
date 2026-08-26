@@ -7,7 +7,7 @@
     android:background="@color/bg"
     android:fitsSystemWindows="true">
 
-    <!-- 模式切换：扫码 | 扫码枪 -->
+    <!-- 模式切换：扫码 | 扫码枪（固定顶部，不随信息区滚动） -->
     <LinearLayout
         android:id="@+id/mode_toggle"
         android:layout_width="match_parent"
@@ -54,7 +54,7 @@
             android:textColor="@color/primary" />
     </LinearLayout>
 
-    <!-- 扫码取景（下移 12dp，与顶部切换条留间距，避免贴边） -->
+    <!-- 扫码取景（固定顶部，下移 12dp 与切换条留间距；不随信息区滚动） -->
     <FrameLayout
         android:id="@+id/frame_camera"
         android:layout_width="match_parent"
@@ -103,7 +103,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height=" 0dp"
+                android:layout_height="0dp"
                 android:layout_weight="1" />
         </LinearLayout>
 
@@ -121,529 +121,547 @@
             android:visibility="gone" />
     </FrameLayout>
 
-    <!-- 扫码枪输入卡（仅扫码枪模式显示） -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/card_gun"
+    <!-- 信息区：相机框固定在上，本区占满剩余高度并随内容滚动（占位式 GONE/VISIBLE 显隐，不覆盖） -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_info"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        app:cardCornerRadius="12dp"
-        app:cardBackgroundColor="@color/card"
-        app:cardElevation="4dp"
-        android:visibility="gone">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:paddingTop="4dp"
+            android:animateLayoutChanges="true">
 
-            <LinearLayout
+            <!-- 扫码枪输入卡（仅扫码枪模式显示） -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_gun"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/card"
+                app:cardElevation="4dp"
+                android:visibility="gone">
 
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:src="@drawable/ic_scan_gun"
-                    app:tint="@color/primary" />
-
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/mode_gun"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="@color/primary_dark" />
+                    android:orientation="vertical"
+                    android:padding="12dp">
 
-                <TextView
-                    android:id="@+id/tv_gun_status"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/gun_status_wait"
-                    android:textSize="12sp"
-                    android:textColor="@color/ok" />
-            </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-            <EditText
-                android:id="@+id/et_gun_input"
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_scan_gun"
+                            app:tint="@color/primary" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/mode_gun"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@color/primary_dark" />
+
+                        <TextView
+                            android:id="@+id/tv_gun_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/gun_status_wait"
+                            android:textSize="12sp"
+                            android:textColor="@color/ok" />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/et_gun_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="132dp"
+                        android:layout_marginTop="10dp"
+                        android:gravity="top|start"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="10dp"
+                        android:background="@drawable/bg_qty"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:typeface="monospace"
+                        android:textColor="@color/text_main"
+                        android:hint="@string/gun_input_hint"
+                        android:inputType="textMultiLine|textNoSuggestions|textVisiblePassword"
+                        android:importantForAutofill="no"
+                        android:minLines="3"
+                        android:maxLines="8"
+                        android:scrollbars="vertical"
+                        android:fadeScrollbars="false"
+                        android:scrollHorizontally="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/gun_connect_hint"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_sub" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- 扫码枪操作卡：解析 + 清空（仅扫码枪模式显示） -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_gun_ops"
                 android:layout_width="match_parent"
-                android:layout_height="132dp"
-                android:layout_marginTop="10dp"
-                android:gravity="top|start"
-                android:paddingHorizontal="12dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="4dp"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/card"
+                app:cardElevation="3dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_scan_gun"
+                            app:tint="@color/primary" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/mode_gun"
+                            android:textStyle="bold"
+                            android:textSize="14sp"
+                            android:textColor="@color/primary_dark" />
+
+                        <TextView
+                            android:id="@+id/tv_gun_lines"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/gun_lines_format"
+                            android:textSize="12sp"
+                            android:textColor="@color/text_sub" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/btn_gun_parse"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:minWidth="0dp"
+                            android:minHeight="44dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="@string/btn_gun_parse"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF"
+                            app:backgroundTint="@color/primary" />
+
+                        <Button
+                            android:id="@+id/btn_gun_clear"
+                            android:layout_width="0dp"
+                            android:layout_height="44dp"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:minHeight="44dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="@string/btn_gun_clear"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/pending" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- 查询结果（型号/名称）醒目横条：置于待录入上方，更直观 -->
+            <TextView
+                android:id="@+id/tv_product_top"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_product_top"
+                android:gravity="center"
                 android:paddingVertical="10dp"
-                android:background="@drawable/bg_qty"
+                android:paddingHorizontal="12dp"
+                android:textColor="#ffffff"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:typeface="monospace"
-                android:textColor="@color/text_main"
-                android:hint="@string/gun_input_hint"
-                android:inputType="textMultiLine|textNoSuggestions|textVisiblePassword"
-                android:importantForAutofill="no"
-                android:minLines="3"
-                android:maxLines="8"
-                android:scrollbars="vertical"
-                android:fadeScrollbars="false"
-                android:scrollHorizontally="false"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
+                android:visibility="gone" />
 
-            <TextView
+            <!-- 解析前拼接的原始扫码串（UDI 优先排序；扫码前隐藏，扫到码再展示） -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_raw_dump"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/gun_connect_hint"
-                android:textSize="12sp"
-                android:textColor="@color/text_sub" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- 扫码枪操作卡：解析 + 清空（仅扫码枪模式显示） -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/card_gun_ops"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="4dp"
-        app:cardCornerRadius="12dp"
-        app:cardBackgroundColor="@color/card"
-        app:cardElevation="3dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
-
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_scan_gun"
-                    app:tint="@color/primary" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/mode_gun"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="@color/primary_dark" />
-
-                <TextView
-                    android:id="@+id/tv_gun_lines"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/gun_lines_format"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_sub" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btn_gun_parse"
-                    android:layout_width="0dp"
-                    android:layout_height="44dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
-                    android:minWidth="0dp"
-                    android:minHeight="44dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="@string/btn_gun_parse"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    app:backgroundTint="@color/primary" />
-
-                <Button
-                    android:id="@+id/btn_gun_clear"
-                    android:layout_width="0dp"
-                    android:layout_height="44dp"
-                    android:layout_weight="1"
-                    android:minWidth="0dp"
-                    android:minHeight="44dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="@string/btn_gun_clear"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    app:backgroundTint="@color/pending" />
-            </LinearLayout>
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- 查询结果（型号/名称）醒目横条：置于待录入上方，更直观 -->
-    <TextView
-        android:id="@+id/tv_product_top"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/bg_product_top"
-        android:gravity="center"
-        android:paddingVertical="10dp"
-        android:paddingHorizontal="12dp"
-        android:textColor="#ffffff"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:visibility="gone" />
-
-    <!-- 解析前拼接的原始扫码串（UDI 优先排序；扫码前隐藏，扫到码再展示） -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/card_raw_dump"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="4dp"
-        app:cardCornerRadius="10dp"
-        app:cardBackgroundColor="#FFF8E1"
-        app:cardElevation="3dp"
-        app:strokeColor="#FFB300"
-        app:strokeWidth="2dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="10dp">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/raw_dump_title"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:textColor="#E65100" />
-
-            <TextView
-                android:id="@+id/tv_raw_dump"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginTop="4dp"
-                android:textSize="13sp"
-                android:textColor="@color/text_main"
-                android:typeface="monospace" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+                app:cardCornerRadius="10dp"
+                app:cardBackgroundColor="#FFF8E1"
+                app:cardElevation="3dp"
+                app:strokeColor="#FFB300"
+                app:strokeWidth="2dp"
+                android:visibility="gone">
 
-    <!-- 「本次将录入」实时预览卡（紧凑，字段分行，保留浅蓝底） -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="4dp"
-        app:cardCornerRadius="10dp"
-        app:cardBackgroundColor="#E3F2FD"
-        app:cardElevation="4dp"
-        app:strokeColor="@color/primary"
-        app:strokeWidth="2dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="10dp">
-
-            <!-- 标题行：左标题 + 右「自定义字典」按钮（仅扫到 UDI 显示） -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/preview_title"
-                    android:textStyle="bold"
-                    android:textSize="13sp"
-                    android:textColor="@color/primary_dark" />
+                    android:orientation="vertical"
+                    android:padding="10dp">
 
-                <Button
-                    android:id="@+id/btn_accept"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:minHeight="34dp"
-                    android:paddingHorizontal="10dp"
-                    android:layout_marginEnd="6dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="@string/btn_accept"
-                    android:textSize="13sp"
-                    android:textColor="#FFFFFF"
-                    android:background="#66BB6A"
-                    android:visibility="gone" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/raw_dump_title"
+                        android:textStyle="bold"
+                        android:textSize="13sp"
+                        android:textColor="#E65100" />
 
-                <Button
-                    android:id="@+id/btn_edit_name"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:minHeight="34dp"
-                    android:paddingHorizontal="12dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="@string/btn_custom_dict"
-                    android:textSize="13sp"
-                    android:textColor="#FFFFFF"
-                    android:background="#FCE4EC"
-                    android:visibility="gone" />
-            </LinearLayout>
+                    <TextView
+                        android:id="@+id/tv_raw_dump"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_main"
+                        android:typeface="monospace" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
-            <!-- UDI 一行（背景比卡片 #E3F2FD 更淡，避免与卡片同色） -->
-            <TextView
-                android:id="@+id/tv_line_udi"
+            <!-- 「本次将录入」实时预览卡（紧凑，字段分行，保留浅蓝底） -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_preview"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:textSize="14sp"
-                android:textColor="@color/text_main"
-                android:background="#CFE8FB"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- 批号 一行 -->
-            <TextView
-                android:id="@+id/tv_line_batch"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textSize="14sp"
-                android:textColor="@color/text_main"
-                android:background="#E8F5E9"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- 效期 一行 -->
-            <TextView
-                android:id="@+id/tv_line_expiry"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textSize="14sp"
-                android:textColor="@color/text_main"
-                android:background="#FFF3E0"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- 生产 一行 -->
-            <TextView
-                android:id="@+id/tv_line_prod"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textSize="14sp"
-                android:textColor="@color/text_main"
-                android:background="#F3E5F5"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- 序列号 一行（空则隐藏） -->
-            <TextView
-                android:id="@+id/tv_line_serial"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textSize="14sp"
-                android:textColor="@color/text_main"
-                android:visibility="gone"
-                android:background="#FCE4EC"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp" />
-
-            <!-- 数量：减号 + 输入框 + 加号（步进按钮） -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="数量："
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_main" />
-
-                <Button
-                    android:id="@+id/btn_qty_minus"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:padding="0dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="−"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:textColor="#ffffff"
-                    app:backgroundTint="@color/primary" />
-
-                <EditText
-                    android:id="@+id/et_qty"
-                    android:layout_width="64dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:inputType="number"
-                    android:gravity="center"
-                    android:background="@drawable/bg_qty"
-                    android:paddingVertical="4dp"
-                    android:paddingHorizontal="6dp"
-                    android:text="1"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_main" />
-
-                <Button
-                    android:id="@+id/btn_qty_plus"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:padding="0dp"
-                    android:includeFontPadding="false"
-                    android:gravity="center"
-                    android:text="＋"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:textColor="#ffffff"
-                    app:backgroundTint="@color/primary" />
-            </LinearLayout>
-
-            <!-- 未识别/待确认提示 -->
-            <TextView
-                android:id="@+id/tv_preview_hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginTop="4dp"
-                android:textColor="@color/text_sub"
-                android:textSize="13sp" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+                app:cardCornerRadius="10dp"
+                app:cardBackgroundColor="#E3F2FD"
+                app:cardElevation="4dp"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="2dp">
 
-    <!-- 操作区（查询 / 改名 / 加入 / 丢弃）—— 移除与预览卡重复的缓冲原文展示 -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginTop="4dp"
-        app:cardCornerRadius="12dp"
-        app:cardBackgroundColor="@color/card"
-        app:cardElevation="3dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="10dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
+                    <!-- 标题行：左标题 + 右「自定义字典」按钮（仅扫到 UDI 显示） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="操作"
-                android:textStyle="bold"
-                android:textSize="14sp"
-                android:textColor="@color/text_main" />
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/preview_title"
+                            android:textStyle="bold"
+                            android:textSize="13sp"
+                            android:textColor="@color/primary_dark" />
 
-            <LinearLayout
+                        <Button
+                            android:id="@+id/btn_accept"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:minHeight="34dp"
+                            android:paddingHorizontal="10dp"
+                            android:layout_marginEnd="6dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="@string/btn_accept"
+                            android:textSize="13sp"
+                            android:textColor="#FFFFFF"
+                            android:background="#66BB6A"
+                            android:visibility="gone" />
+
+                        <Button
+                            android:id="@+id/btn_edit_name"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:minHeight="34dp"
+                            android:paddingHorizontal="12dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="@string/btn_custom_dict"
+                            android:textSize="13sp"
+                            android:textColor="#FFFFFF"
+                            android:background="#FCE4EC"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <!-- UDI 一行（背景比卡片 #E3F2FD 更淡，避免与卡片同色） -->
+                    <TextView
+                        android:id="@+id/tv_line_udi"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main"
+                        android:background="#CFE8FB"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- 批号 一行 -->
+                    <TextView
+                        android:id="@+id/tv_line_batch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main"
+                        android:background="#E8F5E9"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- 效期 一行 -->
+                    <TextView
+                        android:id="@+id/tv_line_expiry"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main"
+                        android:background="#FFF3E0"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- 生产 一行 -->
+                    <TextView
+                        android:id="@+id/tv_line_prod"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main"
+                        android:background="#F3E5F5"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- 序列号 一行（空则隐藏） -->
+                    <TextView
+                        android:id="@+id/tv_line_serial"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main"
+                        android:visibility="gone"
+                        android:background="#FCE4EC"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <!-- 数量：减号 + 输入框 + 加号（步进按钮） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="数量："
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_main" />
+
+                        <Button
+                            android:id="@+id/btn_qty_minus"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="−"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#ffffff"
+                            app:backgroundTint="@color/primary" />
+
+                        <EditText
+                            android:id="@+id/et_qty"
+                            android:layout_width="64dp"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:inputType="number"
+                            android:gravity="center"
+                            android:background="@drawable/bg_qty"
+                            android:paddingVertical="4dp"
+                            android:paddingHorizontal="6dp"
+                            android:text="1"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_main" />
+
+                        <Button
+                            android:id="@+id/btn_qty_plus"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            android:includeFontPadding="false"
+                            android:gravity="center"
+                            android:text="＋"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:textColor="#ffffff"
+                            app:backgroundTint="@color/primary" />
+                    </LinearLayout>
+
+                    <!-- 未识别/待确认提示 -->
+                    <TextView
+                        android:id="@+id/tv_preview_hint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/text_sub"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- 操作区（查询 / 改名 / 加入 / 丢弃）—— 移除与预览卡重复的缓冲原文展示 -->
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="10dp">
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginTop="4dp"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/card"
+                app:cardElevation="3dp">
 
-                <Button
-                    android:id="@+id/btn_query"
-                    style="@style/Widget.Material3.Button"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:minWidth="0dp"
-                    android:minHeight="44dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
-                    android:paddingHorizontal="6dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_query"
-                    android:textColor="#ffffff"
-                    app:backgroundTint="@color/btn_query_green" />
+                    android:orientation="vertical"
+                    android:padding="12dp">
 
-                <Button
-                    android:id="@+id/btn_add"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
-                    android:minWidth="0dp"
-                    android:minHeight="44dp"
-                    android:paddingHorizontal="6dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_add"
-                    android:textColor="#ffffff"
-                    app:backgroundTint="@color/primary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="操作"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_main" />
 
-                <Button
-                    android:id="@+id/btn_discard"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
-                    android:minWidth="0dp"
-                    android:minHeight="44dp"
-                    android:paddingHorizontal="6dp"
-                    android:gravity="center"
-                    android:includeFontPadding="false"
-                    android:text="@string/btn_discard" />
-            </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="10dp">
+
+                        <Button
+                            android:id="@+id/btn_query"
+                            style="@style/Widget.Material3.Button"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:minWidth="0dp"
+                            android:minHeight="44dp"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="4dp"
+                            android:paddingHorizontal="6dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="@string/btn_query"
+                            android:textColor="#ffffff"
+                            app:backgroundTint="@color/btn_query_green" />
+
+                        <Button
+                            android:id="@+id/btn_add"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="4dp"
+                            android:minWidth="0dp"
+                            android:minHeight="44dp"
+                            android:paddingHorizontal="6dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="@string/btn_add"
+                            android:textColor="#ffffff"
+                            app:backgroundTint="@color/primary" />
+
+                        <Button
+                            android:id="@+id/btn_discard"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:layout_marginEnd="4dp"
+                            android:minWidth="0dp"
+                            android:minHeight="44dp"
+                            android:paddingHorizontal="6dp"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="@string/btn_discard" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>
