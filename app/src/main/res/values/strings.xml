@@ -65,7 +65,6 @@
     <!-- 扫码枪模式 -->
     <string name="mode_camera">扫码</string>
     <string name="mode_gun">扫码枪</string>
-    <string name="gun_input_hint">将扫码枪对准条码，扫完自动录入</string>
     <string name="gun_status_wait">就绪 · 等待扫码枪输入</string>
     <string name="gun_status_received">✓ 已收到输入</string>
     <string name="gun_connect_hint">蓝牙枪请先在系统蓝牙配对；USB 枪插上即用（免驱动）</string>
