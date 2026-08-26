@@ -1,0 +1,49 @@
+[
+  {
+    "url": "https://api.github.com/repos/xiaobaidian/hospital-udi-scan/comments/197418753",
+    "html_url": "https://github.com/xiaobaidian/hospital-udi-scan/commit/75483212ad83684e7f1821a72c32c08de50a6869#commitcomment-197418753",
+    "id": 197418753,
+    "node_id": "CC_kwDOUBc5oc4LxF8B",
+    "user": {
+      "login": "github-actions[bot]",
+      "id": 41898282,
+      "node_id": "MDM6Qm90NDE4OTgyODI=",
+      "avatar_url": "https://avatars.githubusercontent.com/in/15368?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/github-actions%5Bbot%5D",
+      "html_url": "https://github.com/apps/github-actions",
+      "followers_url": "https://api.github.com/users/github-actions%5Bbot%5D/followers",
+      "following_url": "https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}",
+      "gists_url": "https://api.github.com/users/github-actions%5Bbot%5D/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/github-actions%5Bbot%5D/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/github-actions%5Bbot%5D/subscriptions",
+      "organizations_url": "https://api.github.com/users/github-actions%5Bbot%5D/orgs",
+      "repos_url": "https://api.github.com/users/github-actions%5Bbot%5D/repos",
+      "events_url": "https://api.github.com/users/github-actions%5Bbot%5D/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/github-actions%5Bbot%5D/received_events",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "position": null,
+    "line": null,
+    "path": null,
+    "commit_id": "75483212ad83684e7f1821a72c32c08de50a6869",
+    "created_at": "2026-08-24T04:36:33Z",
+    "updated_at": "2026-08-24T04:36:33Z",
+    "body": "BUILD LOG (tail):\n\n```\nDownloading https://services.gradle.org/distributions/gradle-8.14.3-all.zip\n.....................10%.....................20%......................30%.....................40%......................50%.....................60%.....................70%......................80%.....................90%......................100%\n\nWelcome to Gradle 8.14.3!\n\nHere are the highlights of this release:\n - Java 24 support\n - GraalVM Native Image toolchain selection\n - Enhancements to test reporting\n - Build Authoring improvements\n\nFor more details see https://docs.gradle.org/8.14.3/release-notes.html\n\nTo honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.\nDaemon will be stopped at the end of the build \n> Task :app:preBuild UP-TO-DATE\n> Task :app:preDebugBuild UP-TO-DATE\n> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE\n> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED\n> Task :app:checkDebugAarMetadata\n> Task :app:processDebugNavigationResources\n> Task :app:compileDebugNavigationResources\n> Task :app:generateDebugResValues\n> Task :app:mapDebugSourceSetPaths\n> Task :app:generateDebugResources\n> Task :app:packageDebugResources\n> Task :app:mergeDebugResources\n> Task :app:createDebugCompatibleScreenManifests\n> Task :app:extractDeepLinksDebug\n> Task :app:parseDebugLocalResources\n> Task :app:processDebugMainManifest\n> Task :app:processDebugManifest\n> Task :app:javaPreCompileDebug\n> Task :app:mergeDebugShaders\n> Task :app:compileDebugShaders NO-SOURCE\n> Task :app:generateDebugAssets UP-TO-DATE\n> Task :app:mergeDebugAssets\n> Task :app:compressDebugAssets\n> Task :app:desugarDebugFileDependencies\n> Task :app:processDebugManifestForPackage\n> Task :app:checkDebugDuplicateClasses\n> Task :app:processDebugResources\n> Task :app:mergeExtDexDebug\n> Task :app:mergeDebugJniLibFolders\n> Task :app:mergeLibDexDebug\n> Task :app:mergeDebugNativeLibs NO-SOURCE\n> Task :app:stripDebugDebugSymbols NO-SOURCE\n> Task :app:validateSigningDebug\n> Task :app:writeDebugAppMetadata\n> Task :app:writeDebugSigningConfigVersions\n\n> Task :app:compileDebugKotlin FAILED\ne: file:///home/runner/work/hospital-udi-scan/hospital-udi-scan/app/src/main/java/com/hospital/udiscan/ListFragment.kt:88:19 Argument type mismatch: actual type is 'kotlin.String', but 'kotlin.Int' was expected.\n\n[Incubating] Problems report is available at: file:///home/runner/work/hospital-udi-scan/hospital-udi-scan/build/reports/problems/problems-report.html\n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nExecution failed for task ':app:compileDebugKotlin'.\n> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction\n   > Compilation error. See log for more details\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD FAILED in 1m 28s\n28 actionable tasks: 28 executed\n\n```",
+    "author_association": "NONE",
+    "reactions": {
+      "url": "https://api.github.com/repos/xiaobaidian/hospital-udi-scan/comments/197418753/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    }
+  }
+]

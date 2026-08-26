@@ -133,6 +133,10 @@ object Gs1Parser {
     /**
      * 判断位置 [pos] 是否是「真 AI 起点」：不仅是数字串在 ALL_AI，
      * 定长 AI 还要求其后跟的字符数达到定长（避免 2024 里的 02 被误判为 AI）。
+     *
+     * 本函数只服务「变长字段找切分边界」：日期型 AI(11/17) 还要求其后 6 位
+     * 是真日期 —— 否则纯数字序列号/批号内部的巧合子串（如 30112501… 中的 "11"）
+     * 会被误当成边界，把序列号切碎。
      */
     private fun isAiBoundary(s: String, pos: Int): Boolean {
         if (pos + 3 <= s.length) {
@@ -145,7 +149,14 @@ object Gs1Parser {
         if (pos + 2 <= s.length) {
             val a2 = s.substring(pos, pos + 2)
             if (a2.all { it.isDigit() } && ALL_AI.contains(a2)) {
-                if (FIXED.containsKey(a2)) return pos + 2 + FIXED[a2]!! <= s.length
+                if (FIXED.containsKey(a2)) {
+                    if (pos + 2 + FIXED[a2]!! > s.length) return false
+                    // 日期型 AI 作为切分边界：值必须像真日期才可信
+                    if ((a2 == "11" || a2 == "17") &&
+                        !looksLikeDate(s.substring(pos + 2, pos + 2 + FIXED[a2]!!))
+                    ) return false
+                    return true
+                }
                 return true
             }
         }
@@ -201,11 +212,16 @@ object Gs1Parser {
                     continue
                 }
             } else {
-                // 变长：吃到「下一个真 AI 边界」或分隔符或串尾
+                // 变长：吃到「下一个真 AI 边界」或分隔符或串尾。
+                // 序列号(21/91)按 GS1 惯例位于串尾，且其值可能是任意数字组合
+                // （如 30 开头的长串，内部极易撞上 01/10/11/17/21 等伪前缀），
+                // 故序列号字段不做 AI 边界扫描，只按空格（两行条码换行处）断，
+                // 其余一律吃到串尾 —— 保证结尾的序列号完整不被切碎。
+                val serialTail = (ai == "21" || ai == "91")
                 val start = i
                 while (i < n) {
                     if (s[i] == ' ') break
-                    if (isAiBoundary(s, i)) break
+                    if (!serialTail && isAiBoundary(s, i)) break
                     i++
                 }
                 value = s.substring(start, i)
@@ -308,7 +324,9 @@ object Gs1Parser {
         val yy = yyMMdd.substring(0, 2).toIntOrNull() ?: return false
         val mm = yyMMdd.substring(2, 4).toIntOrNull() ?: return false
         val dd = yyMMdd.substring(4, 6).toIntOrNull() ?: return false
-        return yy in 0..99 && mm in 1..12 && dd in 1..31
+        // 年份收紧到 25..35（2025–2035）：医疗器械标签的实际年份窗口，
+        // 防止巧合的 6 位数字（如序列号片段）被误判成日期。
+        return yy in 25..35 && mm in 1..12 && dd in 1..31
     }
 
     /** 把 YYMMDD 转成 YYYY-MM-DD 便于展示；非 6 位原样返回。 */
