@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>UDI 盘点 · Windows 版</title>
+<style>
+  :root{
+    --bg:#f3f4f6;
+    --surface:#ffffff;
+    --surface-2:#f7f8fa;
+    --border:#e4e6ea;
+    --border-strong:#d3d7de;
+    --text:#1b1b1b;
+    --muted:#61646a;
+    --muted-2:#8a8d94;
+    --accent:#0f6cbd;
+    --accent-hover:#115ea3;
+    --accent-press:#0c4f86;
+    --accent-soft:#eaf2fb;
+    --radius:6px;
+    --shadow:0 1px 2px rgba(0,0,0,.06), 0 2px 10px rgba(0,0,0,.04);
+    --font:"Segoe UI Variable Display","Segoe UI",system-ui,"Microsoft YaHei",sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:var(--font);
+    color:var(--text);
+    background:linear-gradient(180deg,#f4f5f7,#eef0f3);
+    font-size:13px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .win{ display:flex; flex-direction:column; height:100vh; }
+
+  /* Fluent 页面头（原生标题栏由系统提供） */
+  .appheader{
+    display:flex; align-items:center; gap:11px; padding:13px 18px 11px;
+    border-bottom:1px solid var(--border);
+  }
+  .appicon{
+    width:30px; height:30px; border-radius:7px; flex:none;
+    background:linear-gradient(150deg,#0f6cbd,#13a3c9);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 3px rgba(15,108,189,.35);
+  }
+  .appheader .titles{ display:flex; flex-direction:column; line-height:1.15; }
+  .appheader .t1{ font-size:15px; font-weight:600; letter-spacing:.2px; }
+  .appheader .t2{ font-size:11.5px; color:var(--muted-2); }
+  .appheader .spacer{ flex:1; }
+  .appheader .scanhint{
+    font-size:11.5px; color:var(--muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:var(--radius); padding:4px 9px; max-width:320px;
+  }
+
+  .body{ flex:1; display:flex; min-height:0; }
+
+  /* 左侧导航（Fluent NavigationView 风格） */
+  .nav{ width:128px; border-right:1px solid var(--border); background:var(--surface-2);
+        display:flex; flex-direction:column; padding:10px 8px; gap:3px; }
+  .nav div{
+    position:relative; display:flex; align-items:center; gap:9px;
+    padding:9px 11px; border-radius:var(--radius); cursor:pointer;
+    font-size:13px; color:var(--muted); user-select:none; transition:background .12s,color .12s;
+  }
+  .nav div svg{ width:17px; height:17px; flex:none; }
+  .nav div:hover{ background:#eef0f3; color:var(--text); }
+  .nav div.active{ background:var(--accent-soft); color:var(--accent); font-weight:600; }
+  .nav div.active::before{
+    content:""; position:absolute; left:0; top:7px; bottom:7px; width:3px;
+    border-radius:0 3px 3px 0; background:var(--accent);
+  }
+
+  .content{ flex:1; padding:16px 18px; overflow:auto; }
+  .tab{ display:none; }
+  .tab.active{ display:block; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:8px;
+         padding:15px 16px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .card h3{ margin:0 0 11px; font-size:13.5px; font-weight:600; }
+
+  /* 录入区 */
+  .seg{ display:inline-flex; border:1px solid var(--border-strong); border-radius:var(--radius); overflow:hidden; }
+  .seg span{ padding:6px 14px; font-size:12.5px; cursor:pointer; color:var(--muted); }
+  .seg span.on{ background:var(--accent); color:#fff; }
+  .row{ display:flex; align-items:center; gap:10px; margin-top:11px; flex-wrap:wrap; }
+
+  input[type=text], textarea{
+    width:100%; border:1px solid var(--border-strong); border-radius:var(--radius);
+    padding:10px 12px; font-size:13px; font-family:var(--font); color:var(--text);
+    background:var(--surface); transition:border-color .12s, box-shadow .12s;
+  }
+  input[type=text]{ font-family:"Consolas","Segoe UI",monospace; letter-spacing:.3px; }
+  textarea{ resize:vertical; min-height:96px; }
+  input[type=text]:focus, textarea:focus{
+    outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(15,108,189,.18);
+  }
+
+  button{
+    border:1px solid var(--border-strong); background:var(--surface);
+    border-radius:var(--radius); padding:7px 15px; font-size:13px; cursor:pointer;
+    color:var(--text); font-family:var(--font); transition:background .12s,border-color .12s,transform .05s;
+  }
+  button:hover{ background:#f0f2f5; border-color:#c2c7cf; }
+  button:active{ transform:translateY(1px); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  button.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover{ background:var(--accent-hover); border-color:var(--accent-hover); }
+  button.primary:active{ background:var(--accent-press); }
+  .ghost{ border-color:transparent; background:transparent; color:var(--accent); }
+  .ghost:hover{ background:var(--accent-soft); }
+
+  /* 预览（自动解析） */
+  .preview{ display:grid; grid-template-columns:1fr 1fr; gap:9px 22px; font-size:13px; }
+  .preview .full{ grid-column:1/-1; }
+  .preview .k{ color:var(--muted); margin-right:6px; }
+  .preview .v{ font-weight:600; font-family:"Consolas","Segoe UI",monospace; }
+  .preview .v.empty{ color:var(--muted-2); font-weight:400; }
+  .preview .warn{ color:#b02a2a; font-weight:600; grid-column:1/-1; font-size:12.5px; }
+
+  /* 清单表 */
+  .listhead{ display:flex; align-items:baseline; gap:8px; margin:2px 0 9px; }
+  .listhead .n{ font-size:14px; font-weight:600; }
+  .listhead .c{ font-size:12px; color:var(--muted-2); }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td{ border:1px solid var(--border); padding:7px 9px; text-align:left; vertical-align:middle; }
+  th{ background:var(--surface-2); font-weight:600; color:var(--muted); border-bottom:1px solid var(--border-strong); }
+  tbody tr:hover{ background:#f5f9fd; }
+  td.mono{ font-family:"Consolas","Segoe UI",monospace; }
+  .step{ width:26px; height:26px; border-radius:5px; padding:0; font-size:15px; line-height:1; }
+  .qty{ font-weight:600; min-width:22px; display:inline-block; text-align:center; }
+
+  .tag{ font-size:11.5px; padding:2px 9px; border-radius:4px; display:inline-block; }
+  .tag.ok{ background:#e7f4ec; color:#1a7f3b; }
+  .tag.pending{ background:#fdf2dd; color:#8a5a00; }
+  .tag.none{ background:#fdeae9; color:#b02a2a; }
+  .tag.unqueried{ background:#eef1f5; color:#5a6470; }
+  .tag.err{ background:#eee; color:#666; }
+
+  .hint{ color:var(--muted-2); font-size:11.5px; margin-top:7px; }
+  .c{ color:var(--muted-2); font-weight:400; font-size:12px; }
+  .kbd{ font-family:"Consolas",monospace; background:var(--surface-2); border:1px solid var(--border-strong);
+        border-bottom-width:2px; border-radius:4px; padding:1px 6px; font-size:11px; }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(8px);
+    background:#2b2b2b; color:#fff; padding:9px 17px; border-radius:var(--radius);
+    font-size:12.5px; opacity:0; transition:opacity .22s, transform .22s; pointer-events:none; max-width:82%;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+  }
+  .toast.show{ opacity:.96; transform:translateX(-50%) translateY(0); }
+
+  /* 批量解析结果 */
+  .reswrap{ max-height:300px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius); }
+  tr.fail{ background:#fdecec; }
+  tr.fail td{ color:#b02a2a; }
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="appheader">
+    <div class="appicon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="2.2" height="16" rx="1" fill="#fff"/>
+        <rect x="7" y="4" width="1.4" height="16" rx=".7" fill="#fff" opacity=".85"/>
+        <rect x="10.4" y="4" width="2.4" height="16" rx="1.2" fill="#fff"/>
+        <rect x="14.6" y="4" width="1.4" height="16" rx=".7" fill="#fff" opacity=".85"/>
+        <rect x="17.6" y="4" width="3.4" height="16" rx="1.2" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="titles">
+      <div class="t1">UDI 盘点</div>
+      <div class="t2">医疗器械耗材盘点 · Windows 桌面版</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="scanhint">扫码枪：扫完<b>自动解析预览</b>（不入库）；确认无误后按<b>键盘 Enter</b> 才加入清单</div>
+  </div>
+
+  <div class="body">
+    <div class="nav">
+      <div class="active" data-tab="inventory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10" stroke-linecap="round"/></svg>
+        <span>盘点</span>
+      </div>
+      <div data-tab="dict">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11l3 3v13H5z" stroke-linejoin="round"/><path d="M9 9h6M9 13h6M9 17h4" stroke-linecap="round"/></svg>
+        <span>字典库</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- 盘点 -->
+      <section class="tab active" id="inventory">
+        <div class="card">
+          <h3>条码录入</h3>
+          <div class="seg" id="modeSeg">
+            <span class="on" data-mode="single">单条（扫码）</span>
+            <span data-mode="batch">批量</span>
+          </div>
+
+          <!-- 单条：输入即解析预览；键盘 Enter 入清单；扫码枪回车仅预览 -->
+          <div id="singleWrap" style="margin-top:12px;">
+            <input type="text" id="singleInput" autocomplete="off" spellcheck="false"
+                   placeholder="扫码或粘贴 UDI 条码">
+            <div class="hint">
+              输入或扫描后自动解析预览；按 <span class="kbd">Enter</span> 加入清单。
+            </div>
+          </div>
+
+          <!-- 批量：多行粘贴，手动点解析 -->
+          <div id="batchWrap" style="display:none; margin-top:12px;">
+            <textarea id="batchInput" spellcheck="false" placeholder="每行一条条码，可整段粘贴。点「解析」按钮批量校验，失败项会标红。"></textarea>
+            <div class="row">
+              <button class="primary" onclick="parseBatch()">解析</button>
+              <button onclick="document.getElementById('batchInput').value='';document.getElementById('batchResultCard').style.display='none';">清空</button>
+            </div>
+            <div class="hint">批量不实时解析，需手动点「解析」逐条校验：必须含 <b>UDI（且在开头）</b>、<b>效期</b>、<b>批号</b> 三项，否则标记失败。</div>
+          </div>
+        </div>
+
+        <div class="card" id="previewCard" style="display:none">
+          <h3>当前条目预览（自动解析）</h3>
+          <div class="preview" id="preview"></div>
+        </div>
+
+        <!-- 批量解析结果 -->
+        <div class="card" id="batchResultCard" style="display:none">
+          <h3>解析结果 <span id="batchSummary" class="c"></span></h3>
+          <div class="reswrap">
+            <table>
+              <thead><tr><th>#</th><th>原始码</th><th>UDI</th><th>批号</th><th>效期</th><th>状态</th></tr></thead>
+              <tbody id="batchBody"></tbody>
+            </table>
+          </div>
+          <div class="row">
+            <button class="primary" id="addBatchBtn" onclick="addBatchSuccess()" disabled>将成功项加入清单</button>
+          </div>
+        </div>
+
+        <div class="listhead">
+          <span class="n">盘点清单</span>
+          <span class="c">共 <span id="listCount">0</span> 条</span>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table>
+            <thead><tr><th>UDI</th><th>名称</th><th>批号</th><th>效期</th><th>数量</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button class="primary" onclick="exportJson()">导出 JSON</button>
+          <button onclick="exportCsv()">导出 CSV</button>
+          <button onclick="copyClip()">复制剪贴板</button>
+          <button class="ghost" onclick="clearList()">清空清单</button>
+        </div>
+      </section>
+
+      <!-- 字典库 -->
+      <section class="tab" id="dict">
+        <h3 style="margin:0 0 10px;">离线字典库（<span id="dictCount">0</span> 条）</h3>
+        <div class="row">
+          <button onclick="importDict()">导入字典(JSON)</button>
+          <button onclick="exportDict()">导出字典</button>
+          <button class="primary" onclick="document.getElementById('dUdi').focus()">手动添加</button>
+          <input type="file" id="dictFile" accept=".json" style="display:none" onchange="onDictFile(this)">
+        </div>
+        <div class="card" style="margin-top:13px;">
+          <h3>手动添加覆盖</h3>
+          <div class="row">
+            <input type="text" id="dUdi" placeholder="UDI (14位)" style="flex:1">
+            <input type="text" id="dName" placeholder="产品名称" style="flex:1">
+            <input type="text" id="dCompany" placeholder="厂家(可选)" style="flex:1">
+            <button class="primary" onclick="addDict()">添加</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden; margin-top:13px;">
+          <table>
+            <thead><tr><th>UDI</th><th>名称</th><th>厂家</th><th>来源</th></tr></thead>
+            <tbody id="dictBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+function toast(msg){
+  var t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.add('show'); clearTimeout(t._h);
+  t._h=setTimeout(function(){ t.classList.remove('show'); },2400);
+}
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(function(e){ e.classList.remove('active'); });
+  document.getElementById(t).classList.add('active');
+  document.querySelectorAll('.nav div').forEach(function(e){ e.classList.remove('active'); });
+  document.querySelector('.nav div[data-tab="'+t+'"]').classList.add('active');
+  if(t==='dict') loadDict();
+  if(t==='inventory') focusInput();
+}
+document.querySelectorAll('.nav div').forEach(function(n){ n.onclick=function(){ showTab(n.dataset.tab); }; });
+document.querySelectorAll('#modeSeg span').forEach(function(s){
+  s.onclick=function(){
+    this.parentElement.querySelectorAll('span').forEach(function(x){ x.classList.remove('on'); });
+    this.classList.add('on');
+    var single=this.dataset.mode==='single';
+    document.getElementById('singleWrap').style.display=single?'block':'none';
+    document.getElementById('batchWrap').style.display=single?'none':'block';
+    if(single) focusInput(); else document.getElementById('batchInput').focus();
+  };
+});
+
+function waitApi(cb){
+  if(window.pywebview && window.pywebview.api){ cb(window.pywebview.api); }
+  else { setTimeout(function(){ waitApi(cb); }, 50); }
+}
+function focusInput(){ var el=document.getElementById('singleInput'); if(el){ el.focus(); } }
+
+function statusTag(s){
+  var m={ok:['ok','已查'],pending:['pending','待核对'],none:['none','无记录'],
+          unqueried:['unqueried','未查询'],err:['err','查询失败']};
+  var v=m[s]||['err',s];
+  return '<span class="tag '+v[0]+'">'+v[1]+'</span>';
+}
+function fmtDate(v){ if(!v||v.length!==6) return v; return '20'+v.substring(0,2)+'-'+v.substring(2,4)+'-'+v.substring(4,6); }
+function esc(s){ return (s||'').replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+function renderPreview(res){
+  var card=document.getElementById('previewCard'); var box=document.getElementById('preview');
+  var fields=res&&res.fields;
+  if(!fields||!fields.length){ card.style.display='none'; return; }
+  card.style.display='block';
+  var map={}; fields.forEach(function(f){ map[f.type]=f.value; });
+  function line(k,v){ var empty=!v; return '<div><span class="k">'+k+'</span><span class="v'+(empty?' empty':'')+'">'+(v||'未识别')+'</span></div>'; }
+  var html =
+    line('UDI', map['UDI']) +
+    line('批号', map['BATCH']) +
+    line('效期', map['EXPIRY']?fmtDate(map['EXPIRY']):'') +
+    line('生产日期', map['PROD_DATE']?fmtDate(map['PROD_DATE']):'') +
+    line('序列号', map['SERIAL']);
+  if(res.missing && res.missing.length){
+    html += '<div class="warn">⚠ 解析不完整：'+esc(res.error)+'（按键盘 Enter 也不会入库）</div>';
+  } else if(res.order_ok===false){
+    html += '<div class="warn">⚠ UDI 不在开头，按键盘 Enter 不会入库</div>';
+  }
+  box.innerHTML = html;
+}
+
+function renderList(items){
+  document.getElementById('listCount').textContent=items.length;
+  var tb=document.getElementById('listBody'); tb.innerHTML='';
+  items.forEach(function(it){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="mono">'+esc(it.udi||'')+'</td>'+
+      '<td>'+esc(it.product_name||'-')+'</td>'+
+      '<td class="mono">'+esc(it.batch||'-')+'</td>'+
+      '<td class="mono">'+esc(it.expiry?fmtDate(it.expiry):'-')+'</td>'+
+      '<td><button class="step" onclick="chgQty('+it.id+',-1)">−</button> <span class="qty" id="q'+it.id+'">'+it.qty+'</span> <button class="step" onclick="chgQty('+it.id+',1)">+</button></td>'+
+      '<td>'+statusTag(it.status)+'</td>'+
+      '<td><button class="ghost" onclick="delItem('+it.id+')">删除</button></td>';
+    tb.appendChild(tr);
+  });
+}
+
+/* ---------------- 单条：自动解析预览 ---------------- */
+var parseTimer;
+function autoParse(v){
+  v=(v||'').trim();
+  clearTimeout(parseTimer);
+  if(!v){ renderPreview(null); return; }
+  parseTimer=setTimeout(function(){
+    waitApi(function(api){ api.parse(v).then(renderPreview); });
+  },200);
+}
+document.getElementById('singleInput').addEventListener('input', function(){
+  autoParse(this.value);
+});
+
+/* 区分「扫码枪回车」与「键盘回车」：
+   扫码枪模拟键盘、逐字符极快输入（<~35ms/字符），结尾回车与末字符间隔极小；
+   键盘回车则间隔明显更大，且整段输入耗时远超扫码。
+   判定为扫码枪回车 → 仅解析预览，不入库；键盘回车 → 加入清单。 */
+var SCANNER_GAP_MS=50;
+var lastKeyTime=0, burstStart=0, burstChars=0;
+function isScannerEnter(now){
+  var dt=now-lastKeyTime;
+  if(dt>SCANNER_GAP_MS) return false;            // 与末字符间隔过大 → 键盘
+  if(burstChars<4) return false;                 // 字符数太少（如黏贴），不当扫码
+  var total=now-burstStart;
+  var maxTotal=Math.max(150, burstChars*35);      // 扫码整段极快；人输不可能这么快
+  return total<=maxTotal;
+}
+document.getElementById('singleInput').addEventListener('keydown', function(e){
+  var now=performance.now();
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(isScannerEnter(now)){
+      autoParse(this.value);                      // 扫码枪回车：只预览
+      return;
+    }
+    submitSingle();                               // 键盘回车：加入
+    return;
+  }
+  // 记录输入节奏
+  if(e.key.length===1 || e.key==='Backspace' || e.key==='Delete'){
+    if(now-lastKeyTime>600){ burstStart=now; burstChars=0; }
+    burstChars++;
+  }
+  lastKeyTime=now;
+});
+
+function submitSingle(){
+  var el=document.getElementById('singleInput'); var raw=el.value.trim();
+  if(!raw){ return; }
+  waitApi(function(api){
+    api.submit(raw).then(function(res){
+      if(res&&res.fields) renderPreview(res);
+      if(res&&res.ok){
+        return api.list().then(function(items){
+          renderList(items);
+          toast('已加入清单'); el.value=''; focusInput();
+        });
+      } else {
+        toast('未加入：'+(res&&res.error?res.error:'解析失败'));
+        return null;
+      }
+    }).catch(function(e){ toast('加入失败: '+e); });
+  });
+}
+
+/* ---------------- 批量：手动解析 + 标记失败 ---------------- */
+var lastCompleteRaw=[];
+function parseBatch(){
+  var raw=document.getElementById('batchInput').value;
+  if(!raw.trim()){ toast('录入为空'); return; }
+  waitApi(function(api){
+    api.batch_parse(raw).then(renderBatchResults).catch(function(e){ toast('解析失败: '+e); });
+  });
+}
+function renderBatchResults(results){
+  var succ=0, fail=0; lastCompleteRaw=[];
+  var tb=document.getElementById('batchBody'); tb.innerHTML='';
+  results.forEach(function(r,idx){
+    var isFail=!r.complete;
+    if(isFail) fail++; else { succ++; lastCompleteRaw.push(r.raw); }
+    var m={}; r.fields.forEach(function(f){ m[f.type]=f.value; });
+    var tr=document.createElement('tr');
+    if(isFail) tr.className='fail';
+    var status = isFail
+      ? '<span class="tag err">失败：'+(r.error||'')+'</span>'
+      : '<span class="tag ok">可加入</span>';
+    tr.innerHTML='<td>'+(idx+1)+'</td>'+
+      '<td class="mono">'+esc(r.raw)+'</td>'+
+      '<td class="mono">'+esc(m.UDI||'')+'</td>'+
+      '<td class="mono">'+esc(m.BATCH||'')+'</td>'+
+      '<td class="mono">'+esc(m.EXPIRY?fmtDate(m.EXPIRY):'')+'</td>'+
+      '<td>'+status+'</td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('batchSummary').textContent='成功 '+succ+' / 失败 '+fail;
+  document.getElementById('addBatchBtn').disabled = succ===0;
+  document.getElementById('batchResultCard').style.display='block';
+}
+function addBatchSuccess(){
+  if(!lastCompleteRaw.length){ toast('没有可加入的项'); return; }
+  waitApi(function(api){
+    api.add_batch(lastCompleteRaw).then(function(r){
+      toast('已加入 '+r.added+' 条');
+      return api.list();
+    }).then(function(items){ renderList(items); })
+    .catch(function(e){ toast('加入失败: '+e); });
+  });
+}
+
+function chgQty(id,d){
+  waitApi(function(api){
+    var el=document.getElementById('q'+id); var v=parseInt(el.textContent)+d; if(v<1)v=1;
+    api.set_qty(id,v).then(function(){ el.textContent=v; });
+  });
+}
+function delItem(id){
+  waitApi(function(api){ api.del_item(id).then(function(){ return api.list(); }).then(renderList); });
+}
+function clearList(){
+  waitApi(function(api){ api.clear().then(function(){ return api.list(); }).then(renderList); });
+}
+function exportJson(){ waitApi(function(api){ api.export_json().then(function(p){ toast('已导出: '+p); }); }); }
+function exportCsv(){ waitApi(function(api){ api.export_csv().then(function(p){ toast('已导出: '+p); }); }); }
+function copyClip(){
+  waitApi(function(api){ api.list().then(function(items){ navigator.clipboard.writeText(JSON.stringify(items,null,2)); toast('清单已复制'); }); });
+}
+
+function loadDict(){
+  waitApi(function(api){ api.dict_list().then(function(rows){
+    document.getElementById('dictCount').textContent=rows.length;
+    var tb=document.getElementById('dictBody'); tb.innerHTML='';
+    rows.forEach(function(r){
+      var tr=document.createElement('tr');
+      tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td><td>'+esc(r.product_name||'')+'</td><td>'+esc(r.company_name||'')+'</td><td>'+esc(r.source)+'</td>';
+      tb.appendChild(tr);
+    });
+  }); });
+}
+function addDict(){
+  var udi=document.getElementById('dUdi').value.trim();
+  var name=document.getElementById('dName').value.trim();
+  if(!udi||!name){ toast('UDI 和名称必填'); return; }
+  waitApi(function(api){
+    api.dict_add(udi,name,document.getElementById('dCompany').value.trim()).then(function(){
+      document.getElementById('dUdi').value=''; document.getElementById('dName').value=''; document.getElementById('dCompany').value='';
+      toast('已添加覆盖'); loadDict();
+    });
+  });
+}
+function importDict(){ document.getElementById('dictFile').click(); }
+function onDictFile(input){
+  var f=input.files[0]; if(!f) return;
+  var reader=new FileReader();
+  reader.onload=function(){ waitApi(function(api){ api.dict_import_text(String(reader.result)).then(function(n){ toast('已导入 '+n+' 条'); loadDict(); }); }); };
+  reader.readAsText(f,'utf-8'); input.value='';
+}
+function exportDict(){ waitApi(function(api){ api.dict_export().then(function(p){ toast('已导出: '+p); }); }); }
+
+/* 初始化：载入清单并聚焦录入框 */
+function boot(){ waitApi(function(api){ api.list().then(renderList); }); focusInput(); }
+window.addEventListener('pywebviewready', boot);
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+</body>
+</html>
