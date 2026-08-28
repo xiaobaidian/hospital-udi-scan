@@ -158,6 +158,9 @@ class Api:
     def dict_cache(self):
         return db_store.dict_list_cache()
 
+    def dict_cache_search(self, q):
+        return db_store.dict_cache_search(q)
+
     def dict_search(self, q):
         return db_store.dict_search(q)
 
@@ -225,4 +228,10 @@ class Api:
         p = os.path.join(db_store.data_dir(),
                          "udi_dict_%s.json" % time.strftime("%Y%m%d_%H%M%S"))
         db_store.dict_export(p)
+        return p
+
+    def dict_cache_export(self):
+        p = os.path.join(db_store.data_dir(),
+                         "udi_nmpa_cache_%s.json" % time.strftime("%Y%m%d_%H%M%S"))
+        db_store.dict_cache_export(p)
         return p

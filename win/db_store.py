@@ -166,6 +166,33 @@ def dict_list_cache():
              "company_name": r[3] or ""} for r in rows]
 
 
+def dict_cache_search(q):
+    """NMPA 缓存按 UDI / 名称 / 规格型号 / 厂家 模糊搜索。"""
+    q = (q or "").strip()
+    if not q:
+        return dict_list_cache()
+    like = "%" + q + "%"
+    conn = _conn()
+    try:
+        rows = conn.execute(
+            "SELECT udi,product_name,specification,company_name FROM T_CACHE "
+            "WHERE udi LIKE ? OR product_name LIKE ? OR specification LIKE ? OR company_name LIKE ? "
+            "ORDER BY udi",
+            (like, like, like, like)).fetchall()
+    finally:
+        conn.close()
+    return [{"udi": r[0], "product_name": r[1] or "", "specification": r[2] or "",
+             "company_name": r[3] or ""} for r in rows]
+
+
+def dict_cache_export(path):
+    """导出 NMPA 缓存为 JSON。"""
+    data = dict_list_cache()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return len(data)
+
+
 def dict_search(q):
     q = (q or "").strip()
     if not q:

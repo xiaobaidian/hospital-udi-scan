@@ -48,7 +48,8 @@
   .appheader .spacer{ flex:1; }
   .appheader .scanhint{
     font-size:11.5px; color:var(--muted); background:var(--surface-2);
-    border:1px solid var(--border); border-radius:var(--radius); padding:4px 9px; max-width:320px;
+    border:1px solid var(--border); border-radius:var(--radius); padding:4px 9px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
   .body{ flex:1; display:flex; min-height:0; }
@@ -172,7 +173,7 @@
       <div class="t2">医疗器械耗材盘点 · Windows 桌面版</div>
     </div>
     <div class="spacer"></div>
-    <div class="scanhint">扫码枪：扫完<b>自动解析预览</b>（不入库）；确认无误后按<b>键盘 Enter</b> 才加入清单</div>
+    <div class="scanhint">扫码枪扫描仅预览，按键盘 Enter 才加入清单</div>
   </div>
 
   <div class="body">
@@ -280,15 +281,13 @@
               <input type="text" id="dName" placeholder="产品名称" style="flex:1.2">
               <input type="text" id="dModel" placeholder="型号(规格型号)" style="flex:1.1">
               <input type="text" id="dCompany" placeholder="厂家" style="flex:1.2">
-              <input type="text" id="dBrand" placeholder="品牌" style="flex:.8">
-              <input type="text" id="dCode" placeholder="物资编码" style="flex:1">
               <button class="primary" onclick="addDict()">添加</button>
             </div>
           </div>
 
           <div class="card" style="padding:0; overflow:hidden;">
             <table>
-              <thead><tr><th>UDI</th><th>名称</th><th>型号</th><th>厂家</th><th>品牌</th><th>物资编码</th><th>操作</th></tr></thead>
+              <thead><tr><th>UDI</th><th>名称</th><th>型号</th><th>厂家</th><th>操作</th></tr></thead>
               <tbody id="dictBody"></tbody>
             </table>
           </div>
@@ -298,9 +297,10 @@
         <div id="dictCache" style="display:none">
           <div class="row" style="margin-bottom:10px;">
             <button class="primary" onclick="pickOfficial()">导入官方字典(NMPA)</button>
-            <span class="c">把已确认的 NMPA 结果批量导入只读缓存，作为查码兜底</span>
+            <button onclick="exportCache()">导出缓存</button>
+            <input type="text" id="cacheSearch" placeholder="搜索：UDI / 名称 / 规格型号 / 厂家" style="max-width:300px; flex:1;">
           </div>
-          <div class="hint" style="margin-bottom:10px;">联网查询自动写入的 NMPA 结果缓存，仅作查码兜底，<b>不可手动编辑</b>。自定义字典优先级更高。</div>
+          <div class="hint" style="margin-bottom:10px;">只读 NMPA 缓存，作为查码兜底，<b>不可手动编辑</b>。自定义字典优先级更高。</div>
           <div class="card" style="padding:0; overflow:hidden;">
             <table>
               <thead><tr><th>UDI</th><th>名称</th><th>规格型号</th><th>厂家</th></tr></thead>
@@ -553,17 +553,25 @@ function loadCustom(q){
     });
   });
 }
-function loadCache(){
-  waitApi(function(api){ api.dict_cache().then(function(rows){
-    document.getElementById('dictCount').textContent=rows.length;
-    var tb=document.getElementById('cacheBody'); tb.innerHTML='';
-    rows.forEach(function(r){
-      var tr=document.createElement('tr');
-      tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td><td>'+esc(r.product_name||'')+'</td><td class="mono">'+esc(r.specification||'')+'</td><td>'+esc(r.company_name||'')+'</td>';
-      tb.appendChild(tr);
-    });
-  }); });
+function renderCacheRows(rows){
+  document.getElementById('dictCount').textContent=rows.length;
+  var tb=document.getElementById('cacheBody'); tb.innerHTML='';
+  rows.forEach(function(r){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td><td>'+esc(r.product_name||'')+'</td><td class="mono">'+esc(r.specification||'')+'</td><td>'+esc(r.company_name||'')+'</td>';
+    tb.appendChild(tr);
+  });
 }
+function loadCache(){
+  waitApi(function(api){ api.dict_cache().then(renderCacheRows); });
+}
+function searchCache(q){
+  waitApi(function(api){
+    var p = q ? api.dict_cache_search(q) : api.dict_cache();
+    Promise.resolve(p).then(renderCacheRows);
+  });
+}
+function exportCache(){ waitApi(function(api){ api.dict_cache_export().then(function(p){ toast('已导出: '+p); }); }); }
 function addDict(){
   var udi=document.getElementById('dUdi').value.trim();
   var name=document.getElementById('dName').value.trim();
@@ -572,9 +580,8 @@ function addDict(){
     api.dict_add(udi,name,
       document.getElementById('dModel').value.trim(),
       document.getElementById('dCompany').value.trim(),
-      document.getElementById('dCode').value.trim(),
-      document.getElementById('dBrand').value.trim()).then(function(){
-      ['dUdi','dName','dModel','dCompany','dBrand','dCode'].forEach(function(id){ document.getElementById(id).value=''; });
+      '','').then(function(){
+      ['dUdi','dName','dModel','dCompany'].forEach(function(id){ document.getElementById(id).value=''; });
       toast('已添加到自定义字典'); loadCustom();
     });
   });
@@ -600,6 +607,10 @@ function exportDict(){ waitApi(function(api){ api.dict_export().then(function(p)
 document.getElementById('dictSearch').addEventListener('input', function(){
   var v=this.value.trim(); clearTimeout(this._t);
   this._t=setTimeout(function(){ loadCustom(v); }, 200);
+});
+document.getElementById('cacheSearch').addEventListener('input', function(){
+  var v=this.value.trim(); clearTimeout(this._t);
+  this._t=setTimeout(function(){ searchCache(v); }, 200);
 });
 
 /* 初始化：载入清单并聚焦录入框 */
