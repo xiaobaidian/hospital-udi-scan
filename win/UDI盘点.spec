@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui/index.html', 'ui')],
+    datas=[('ui/index.html', 'ui'), ('udi_cache.db', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

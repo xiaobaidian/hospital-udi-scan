@@ -22,6 +22,7 @@ import sqlite3
 import json
 import csv
 import sys
+import shutil
 import threading
 
 _lock = threading.Lock()
@@ -444,4 +445,32 @@ def export_csv(path):
     return len(data)
 
 
+def _seed_db_path():
+    """打包后内置的预置数据库（含官方 NMPA 字典），位于 _MEIPASS。"""
+    if getattr(sys, "frozen", False):
+        p = os.path.join(sys._MEIPASS, "udi_cache.db")
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def ensure_db():
+    """保证 exe 同目录有可用数据库：
+
+    - 已有则沿用（保留官方字典 + 自定义字典 + 历史清单）；
+    - 没有则从内置预置库释放一份（含 1475 条 NMPA 官方字典），实现单文件便携；
+    - 都没有则交给 init() 建空表。
+    """
+    if os.path.exists(DB_PATH):
+        return
+    seed = _seed_db_path()
+    if seed:
+        try:
+            shutil.copyfile(seed, DB_PATH)
+            return
+        except Exception:
+            pass
+
+
+ensure_db()
 init()
