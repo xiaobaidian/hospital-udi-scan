@@ -265,10 +265,9 @@
           <span class="c">共 <span id="dictCount">0</span> 条</span>
         </div>
 
-        <!-- 自定义字典：可管理，官方字典进这里 -->
+        <!-- 自定义字典：用户手动维护，NMPA 查不到时在此添加 -->
         <div id="dictCustom">
           <div class="row" style="margin-bottom:10px;">
-            <button class="primary" onclick="pickOfficial()">导入官方字典(NMPA)</button>
             <button onclick="pickFile()">导入文件(CSV/JSON)</button>
             <button onclick="exportDict()">导出字典</button>
             <input type="text" id="dictSearch" placeholder="搜索：UDI / 型号 / 名称 / 物资编码 / 厂家" style="max-width:280px; flex:1;">
@@ -295,8 +294,12 @@
           </div>
         </div>
 
-        <!-- NMPA 缓存：联网查询自动落盘，只读 -->
+        <!-- NMPA 缓存：官方字典 / 联网查询自动落盘，只读 -->
         <div id="dictCache" style="display:none">
+          <div class="row" style="margin-bottom:10px;">
+            <button class="primary" onclick="pickOfficial()">导入官方字典(NMPA)</button>
+            <span class="c">把已确认的 NMPA 结果批量导入只读缓存，作为查码兜底</span>
+          </div>
           <div class="hint" style="margin-bottom:10px;">联网查询自动写入的 NMPA 结果缓存，仅作查码兜底，<b>不可手动编辑</b>。自定义字典优先级更高。</div>
           <div class="card" style="padding:0; overflow:hidden;">
             <table>
@@ -552,6 +555,7 @@ function loadCustom(q){
 }
 function loadCache(){
   waitApi(function(api){ api.dict_cache().then(function(rows){
+    document.getElementById('dictCount').textContent=rows.length;
     var tb=document.getElementById('cacheBody'); tb.innerHTML='';
     rows.forEach(function(r){
       var tr=document.createElement('tr');
@@ -581,7 +585,7 @@ function delDict(udi){
 function pickOfficial(){
   waitApi(function(api){ api.pick_import_official().then(function(r){
     if(r.cancelled){ return; }
-    if(r.ok){ toast('官方字典已导入 '+r.added+' 条'); loadCustom(); }
+    if(r.ok){ toast('官方字典已导入 '+r.added+' 条（NMPA 缓存）'); loadCache(); }
     else { toast('导入失败: '+r.error); }
   }); });
 }

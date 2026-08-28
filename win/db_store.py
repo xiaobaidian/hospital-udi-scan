@@ -2,8 +2,8 @@
 """本地 SQLite 存储：自定义字典 + NMPA 缓存 + 盘点清单（持久化）。
 
 三张表：
-  T_DICT    自定义字典（用户可管理；官方 NMPA 确认结果也导入这里，优先级最高）
-  T_CACHE   NMPA 联网查询自动缓存（只读、不可手改，仅作兜底）
+  T_DICT    自定义字典（用户手动维护；NMPA 查不到时在此手动添加，优先级最高）
+  T_CACHE   NMPA 官方字典 / 联网查询缓存（只读、不可手改，仅作兜底）
   T_LIST    盘点清单（关掉再开仍在）
 
 字段说明（自定义字典）：
@@ -220,12 +220,12 @@ def dict_count():
 
 
 def dict_import_official(path):
-    """导入 NMPA 官方字典结果（pmcode_udi_results.json 等多批）。
+    """导入 NMPA 官方字典结果到 NMPA 缓存表 T_CACHE（只读兜底，非自定义字典）。
 
     仅取 status='ok' 且 udi 非空的确认条目；按 udi 去重；字段映射：
-      udi<-udi, name<-name, model<-model(规格型号), company<-nmpa_mfr||brand,
-      code<-code(物资编码), brand<-brand。
-    返回 (新增, 跳过)。
+      udi<-udi, product_name<-name, specification<-model(规格型号),
+      company_name<-nmpa_mfr||company||brand。
+    返回新增条数。
     """
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -243,13 +243,11 @@ def dict_import_official(path):
                 continue
             name = (it.get("name") or "").strip()
             model = (it.get("model") or "").strip()
-            company = (it.get("nmpa_mfr") or it.get("company") or "").strip()
-            code = (it.get("code") or "").strip()
-            brand = (it.get("brand") or "").strip()
+            company = (it.get("nmpa_mfr") or it.get("company") or it.get("brand") or "").strip()
             conn.execute(
-                "INSERT OR REPLACE INTO T_DICT(udi,code,name,model,company,brand,specification,updated_at) "
-                "VALUES(?,?,?,?,?,?,?,?)",
-                (udi, code, name, model, company, brand, model, int(__import__("time").time())))
+                "INSERT OR REPLACE INTO T_CACHE(udi,product_name,specification,company_name,updated_at) "
+                "VALUES(?,?,?,?,?)",
+                (udi, name, model, company, int(__import__("time").time())))
             added += 1
         conn.commit()
     finally:
