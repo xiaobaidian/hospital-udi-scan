@@ -46,16 +46,19 @@ class Api:
             prod = db_store.lookup_product(udi)
             if prod and prod.get("product_name"):
                 item["product_name"] = prod["product_name"]
+                item["model"] = prod.get("model") or ""
                 item["status"] = "ok"
             else:
                 r = nmpa_client.query(udi)
                 st = r.get("state")
                 if st == "ok":
                     item["product_name"] = r.get("productName")
+                    item["model"] = r.get("specification") or ""
                     item["status"] = "ok"
                     db_store.save_cache(udi, r.get("productName"), r.get("specification"), r.get("companyName"))
                 elif st == "pending":
                     item["product_name"] = r.get("productName")
+                    item["model"] = r.get("specification") or ""
                     item["status"] = "pending"
                     db_store.save_cache(udi, r.get("productName"), r.get("specification"), r.get("companyName"))
                 elif st == "skip":
@@ -97,15 +100,18 @@ class Api:
             m = {f["type"]: f["value"] for f in res["fields"]}
             udi = m.get("UDI")
             product_name = None
+            model = ""
             status = "unqueried"
             if udi:
                 prod = db_store.lookup_product(udi)
                 if prod and prod.get("product_name"):
                     product_name = prod["product_name"]
+                    model = prod.get("model") or ""
                     status = "ok"
             item = {
                 "udi": udi,
                 "product_name": product_name,
+                "model": model,
                 "batch": m.get("BATCH"),
                 "expiry": m.get("EXPIRY"),
                 "production": m.get("PROD_DATE"),
@@ -146,17 +152,74 @@ class Api:
         return db_store.stats()
 
     # ---------------- 字典库 ----------------
-    def dict_list(self):
-        return db_store.dict_list()
+    def dict_custom(self):
+        return db_store.dict_list_custom()
 
-    def dict_add(self, udi, name, company="", spec=""):
-        db_store.dict_add(udi, name, spec, company)
+    def dict_cache(self):
+        return db_store.dict_list_cache()
+
+    def dict_search(self, q):
+        return db_store.dict_search(q)
+
+    def dict_count(self):
+        return db_store.dict_count()
+
+    def dict_add(self, udi, name, model="", company="", code="", brand=""):
+        ok = db_store.dict_add(udi, name, model, company, code, brand)
+        return {"ok": ok}
+
+    def dict_delete(self, udi):
+        db_store.dict_delete(udi)
         return True
 
-    def dict_import_text(self, text):
-        import json
-        data = json.loads(text)
-        return db_store.dict_import_data(data)
+    def import_official(self, path):
+        """导入 NMPA 官方字典结果（status=ok 且带 UDI 的确认条目）。"""
+        try:
+            n = db_store.dict_import_official(path)
+            return {"ok": True, "added": n}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def import_file(self, path):
+        """按扩展名自动选 CSV / JSON 导入到自定义字典。"""
+        try:
+            if path.lower().endswith(".csv"):
+                n = db_store.dict_import_csv(path)
+            else:
+                n = db_store.dict_import_json(path)
+            return {"ok": True, "added": n}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def pick_import_official(self):
+        """弹出系统文件框，选 NMPA 官方字典 json 导入。"""
+        import webview
+        paths = webview.windows[0].create_file_dialog(
+            webview.OPEN_DIALOG, allow_multiple=False,
+            file_types=("NMPA 官方字典 (*.json)", "All files (*.*)"))
+        if not paths:
+            return {"ok": True, "added": 0, "cancelled": True}
+        try:
+            n = db_store.dict_import_official(paths[0])
+            return {"ok": True, "added": n}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def pick_import_file(self):
+        """弹出系统文件框，选 CSV/JSON 导入到自定义字典。"""
+        import webview
+        paths = webview.windows[0].create_file_dialog(
+            webview.OPEN_DIALOG, allow_multiple=False,
+            file_types=("CSV/JSON (*.csv;*.json)", "All files (*.*)"))
+        if not paths:
+            return {"ok": True, "added": 0, "cancelled": True}
+        p = paths[0]
+        try:
+            ext = os.path.splitext(p)[1].lower()
+            n = db_store.dict_import_csv(p) if ext == ".csv" else db_store.dict_import_json(p)
+            return {"ok": True, "added": n}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def dict_export(self):
         p = os.path.join(db_store.data_dir(),

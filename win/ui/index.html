@@ -242,7 +242,7 @@
         </div>
         <div class="card" style="padding:0; overflow:hidden;">
           <table>
-            <thead><tr><th>UDI</th><th>名称</th><th>批号</th><th>效期</th><th>数量</th><th>状态</th><th>操作</th></tr></thead>
+            <thead><tr><th>UDI</th><th>名称</th><th>型号</th><th>批号</th><th>效期</th><th>数量</th><th>状态</th><th>操作</th></tr></thead>
             <tbody id="listBody"></tbody>
           </table>
         </div>
@@ -256,27 +256,54 @@
 
       <!-- 字典库 -->
       <section class="tab" id="dict">
-        <h3 style="margin:0 0 10px;">离线字典库（<span id="dictCount">0</span> 条）</h3>
-        <div class="row">
-          <button onclick="importDict()">导入字典(JSON)</button>
-          <button onclick="exportDict()">导出字典</button>
-          <button class="primary" onclick="document.getElementById('dUdi').focus()">手动添加</button>
-          <input type="file" id="dictFile" accept=".json" style="display:none" onchange="onDictFile(this)">
+        <div class="row" style="margin-bottom:10px;">
+          <div class="seg" id="dictSeg">
+            <span class="on" data-dt="custom">自定义字典</span>
+            <span data-dt="cache">NMPA 缓存</span>
+          </div>
+          <div class="spacer" style="flex:1"></div>
+          <span class="c">共 <span id="dictCount">0</span> 条</span>
         </div>
-        <div class="card" style="margin-top:13px;">
-          <h3>手动添加覆盖</h3>
-          <div class="row">
-            <input type="text" id="dUdi" placeholder="UDI (14位)" style="flex:1">
-            <input type="text" id="dName" placeholder="产品名称" style="flex:1">
-            <input type="text" id="dCompany" placeholder="厂家(可选)" style="flex:1">
-            <button class="primary" onclick="addDict()">添加</button>
+
+        <!-- 自定义字典：可管理，官方字典进这里 -->
+        <div id="dictCustom">
+          <div class="row" style="margin-bottom:10px;">
+            <button class="primary" onclick="pickOfficial()">导入官方字典(NMPA)</button>
+            <button onclick="pickFile()">导入文件(CSV/JSON)</button>
+            <button onclick="exportDict()">导出字典</button>
+            <input type="text" id="dictSearch" placeholder="搜索：UDI / 型号 / 名称 / 物资编码 / 厂家" style="max-width:280px; flex:1;">
+          </div>
+
+          <div class="card" style="margin-bottom:13px;">
+            <h3>手动添加</h3>
+            <div class="row">
+              <input type="text" id="dUdi" placeholder="UDI (14位)" style="flex:1.1">
+              <input type="text" id="dName" placeholder="产品名称" style="flex:1.2">
+              <input type="text" id="dModel" placeholder="型号(规格型号)" style="flex:1.1">
+              <input type="text" id="dCompany" placeholder="厂家" style="flex:1.2">
+              <input type="text" id="dBrand" placeholder="品牌" style="flex:.8">
+              <input type="text" id="dCode" placeholder="物资编码" style="flex:1">
+              <button class="primary" onclick="addDict()">添加</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:0; overflow:hidden;">
+            <table>
+              <thead><tr><th>UDI</th><th>名称</th><th>型号</th><th>厂家</th><th>品牌</th><th>物资编码</th><th>操作</th></tr></thead>
+              <tbody id="dictBody"></tbody>
+            </table>
           </div>
         </div>
-        <div class="card" style="padding:0; overflow:hidden; margin-top:13px;">
-          <table>
-            <thead><tr><th>UDI</th><th>名称</th><th>厂家</th><th>来源</th></tr></thead>
-            <tbody id="dictBody"></tbody>
-          </table>
+
+        <!-- NMPA 缓存：联网查询自动落盘，只读 -->
+        <div id="dictCache" style="display:none">
+          <div class="hint" style="margin-bottom:10px;">联网查询自动写入的 NMPA 结果缓存，仅作查码兜底，<b>不可手动编辑</b>。自定义字典优先级更高。</div>
+          <div class="card" style="padding:0; overflow:hidden;">
+            <table>
+              <thead><tr><th>UDI</th><th>名称</th><th>规格型号</th><th>厂家</th></tr></thead>
+              <tbody id="cacheBody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>
@@ -295,7 +322,7 @@ function showTab(t){
   document.getElementById(t).classList.add('active');
   document.querySelectorAll('.nav div').forEach(function(e){ e.classList.remove('active'); });
   document.querySelector('.nav div[data-tab="'+t+'"]').classList.add('active');
-  if(t==='dict') loadDict();
+  if(t==='dict') loadCustom();
   if(t==='inventory') focusInput();
 }
 document.querySelectorAll('.nav div').forEach(function(n){ n.onclick=function(){ showTab(n.dataset.tab); }; });
@@ -353,6 +380,7 @@ function renderList(items){
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="mono">'+esc(it.udi||'')+'</td>'+
       '<td>'+esc(it.product_name||'-')+'</td>'+
+      '<td class="mono">'+esc(it.model||'-')+'</td>'+
       '<td class="mono">'+esc(it.batch||'-')+'</td>'+
       '<td class="mono">'+esc(it.expiry?fmtDate(it.expiry):'-')+'</td>'+
       '<td><button class="step" onclick="chgQty('+it.id+',-1)">−</button> <span class="qty" id="q'+it.id+'">'+it.qty+'</span> <button class="step" onclick="chgQty('+it.id+',1)">+</button></td>'+
@@ -490,13 +518,44 @@ function copyClip(){
   waitApi(function(api){ api.list().then(function(items){ navigator.clipboard.writeText(JSON.stringify(items,null,2)); toast('清单已复制'); }); });
 }
 
-function loadDict(){
-  waitApi(function(api){ api.dict_list().then(function(rows){
-    document.getElementById('dictCount').textContent=rows.length;
-    var tb=document.getElementById('dictBody'); tb.innerHTML='';
+/* 字典库：自定义 / NMPA 缓存 两段切换 */
+document.querySelectorAll('#dictSeg span').forEach(function(s){
+  s.onclick=function(){
+    this.parentElement.querySelectorAll('span').forEach(function(x){ x.classList.remove('on'); });
+    this.classList.add('on');
+    var custom=this.dataset.dt==='custom';
+    document.getElementById('dictCustom').style.display=custom?'block':'none';
+    document.getElementById('dictCache').style.display=custom?'none':'block';
+    if(custom) loadCustom(); else loadCache();
+  };
+});
+
+function loadCustom(q){
+  waitApi(function(api){
+    var p = q ? api.dict_search(q) : api.dict_custom();
+    Promise.resolve(p).then(function(rows){
+      document.getElementById('dictCount').textContent=rows.length;
+      var tb=document.getElementById('dictBody'); tb.innerHTML='';
+      rows.forEach(function(r){
+        var tr=document.createElement('tr');
+        tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td>'+
+          '<td>'+esc(r.name||'')+'</td>'+
+          '<td class="mono">'+esc(r.model||'')+'</td>'+
+          '<td>'+esc(r.company||'')+'</td>'+
+          '<td>'+esc(r.brand||'')+'</td>'+
+          '<td class="mono">'+esc(r.code||'')+'</td>'+
+          '<td><button class="ghost" onclick="delDict(\''+esc(r.udi)+'\')">删除</button></td>';
+        tb.appendChild(tr);
+      });
+    });
+  });
+}
+function loadCache(){
+  waitApi(function(api){ api.dict_cache().then(function(rows){
+    var tb=document.getElementById('cacheBody'); tb.innerHTML='';
     rows.forEach(function(r){
       var tr=document.createElement('tr');
-      tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td><td>'+esc(r.product_name||'')+'</td><td>'+esc(r.company_name||'')+'</td><td>'+esc(r.source)+'</td>';
+      tr.innerHTML='<td class="mono">'+esc(r.udi)+'</td><td>'+esc(r.product_name||'')+'</td><td class="mono">'+esc(r.specification||'')+'</td><td>'+esc(r.company_name||'')+'</td>';
       tb.appendChild(tr);
     });
   }); });
@@ -506,20 +565,38 @@ function addDict(){
   var name=document.getElementById('dName').value.trim();
   if(!udi||!name){ toast('UDI 和名称必填'); return; }
   waitApi(function(api){
-    api.dict_add(udi,name,document.getElementById('dCompany').value.trim()).then(function(){
-      document.getElementById('dUdi').value=''; document.getElementById('dName').value=''; document.getElementById('dCompany').value='';
-      toast('已添加覆盖'); loadDict();
+    api.dict_add(udi,name,
+      document.getElementById('dModel').value.trim(),
+      document.getElementById('dCompany').value.trim(),
+      document.getElementById('dCode').value.trim(),
+      document.getElementById('dBrand').value.trim()).then(function(){
+      ['dUdi','dName','dModel','dCompany','dBrand','dCode'].forEach(function(id){ document.getElementById(id).value=''; });
+      toast('已添加到自定义字典'); loadCustom();
     });
   });
 }
-function importDict(){ document.getElementById('dictFile').click(); }
-function onDictFile(input){
-  var f=input.files[0]; if(!f) return;
-  var reader=new FileReader();
-  reader.onload=function(){ waitApi(function(api){ api.dict_import_text(String(reader.result)).then(function(n){ toast('已导入 '+n+' 条'); loadDict(); }); }); };
-  reader.readAsText(f,'utf-8'); input.value='';
+function delDict(udi){
+  waitApi(function(api){ api.dict_delete(udi).then(function(){ loadCustom(); }); });
+}
+function pickOfficial(){
+  waitApi(function(api){ api.pick_import_official().then(function(r){
+    if(r.cancelled){ return; }
+    if(r.ok){ toast('官方字典已导入 '+r.added+' 条'); loadCustom(); }
+    else { toast('导入失败: '+r.error); }
+  }); });
+}
+function pickFile(){
+  waitApi(function(api){ api.pick_import_file().then(function(r){
+    if(r.cancelled){ return; }
+    if(r.ok){ toast('已导入 '+r.added+' 条'); loadCustom(); }
+    else { toast('导入失败: '+r.error); }
+  }); });
 }
 function exportDict(){ waitApi(function(api){ api.dict_export().then(function(p){ toast('已导出: '+p); }); }); }
+document.getElementById('dictSearch').addEventListener('input', function(){
+  var v=this.value.trim(); clearTimeout(this._t);
+  this._t=setTimeout(function(){ loadCustom(v); }, 200);
+});
 
 /* 初始化：载入清单并聚焦录入框 */
 function boot(){ waitApi(function(api){ api.list().then(renderList); }); focusInput(); }
