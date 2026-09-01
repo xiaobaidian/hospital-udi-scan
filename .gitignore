@@ -10,3 +10,14 @@ app/release/
 app-debug.apk
 .DS_Store
 Thumbs.db
+
+# 自动化/CI 辅助产物（非工程源码，不入库）
+__pycache__/
+_push_payload.json
+push_commit.py
+*.zip
+*.log
+c.json
+comments_tmp.json
+tmp_patch*.py
+gen_launcher_png.py
